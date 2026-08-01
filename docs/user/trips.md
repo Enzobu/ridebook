@@ -1,14 +1,16 @@
 ---
-title: Balades
+title: Consulter les balades
 owner: enzo
-status: in-progress
+status: implemented
 updated: 2026-08-01
 ---
 
-# Balades
+# Consulter les balades
 
-Les balades sont consultables sans compte.
+L'accueil Ridebook affiche les balades publiques sous forme de cartes. Chaque carte indique le nom, le statut de carte, la distance, la durée et la date d'ajout quand ces informations sont disponibles.
 
-Un utilisateur connecté peut créer, modifier et supprimer ses propres balades. Un administrateur peut gérer toutes les balades.
+La recherche filtre les balades par texte. Les menus permettent de filtrer par statut de carte et de changer le tri.
 
-La suppression masque la balade des listes publiques sans supprimer immédiatement la ligne en base.
+Depuis une carte, le bouton de détail ouvre la fiche complète. Si la carte Google Maps a été récupérée, elle est affichée directement. Sinon, Ridebook affiche le statut de récupération.
+
+Le bouton `Ouvrir dans Google Maps` ouvre le trajet original dans un nouvel onglet.

@@ -12,3 +12,4 @@ updated: 2026-08-01
 - [Balades](trips.md)
 - [Queue de récupération carte](map-job-queue.md)
 - [Retry carte et notifications](map-retry-notifications.md)
+- [Consultation publique des balades](public-trip-browsing.md)
