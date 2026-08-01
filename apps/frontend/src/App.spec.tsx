@@ -18,7 +18,19 @@ const trip = {
   mapLastError: null,
   mapStatus: "SUCCESS",
   name: "Boucle vallée",
+  ownerId: "user-id",
   updatedAt: "2026-08-01T12:00:00.000Z",
+} as const;
+const pendingTrip = { ...trip, mapEmbedUrl: null, mapStatus: "PENDING" } as const;
+const failedTrip = { ...trip, mapEmbedUrl: null, mapLastError: "Erreur", mapStatus: "FAILED" } as const;
+const session = {
+  user: {
+    createdAt: "2026-08-01T12:00:00.000Z",
+    email: "user@example.com",
+    id: "user-id",
+    role: "USER",
+    updatedAt: "2026-08-01T12:00:00.000Z",
+  },
 } as const;
 
 describe("App", () => {
@@ -26,6 +38,7 @@ describe("App", () => {
     localStorage.clear();
     document.documentElement.removeAttribute("data-theme");
     vi.restoreAllMocks();
+    vi.useRealTimers();
   });
 
   afterEach(() => {
@@ -33,14 +46,7 @@ describe("App", () => {
   });
 
   it("should render public trips with distance and duration", async () => {
-    mockFetch([
-      {
-        items: [trip],
-        limit: 9,
-        page: 1,
-        total: 1,
-      },
-    ]);
+    mockFetch({ list: { items: [trip], limit: 9, page: 1, total: 1 } });
 
     render(<App />);
 
@@ -50,7 +56,7 @@ describe("App", () => {
   });
 
   it("should render an empty state", async () => {
-    mockFetch([{ items: [], limit: 9, page: 1, total: 0 }]);
+    mockFetch({ list: { items: [], limit: 9, page: 1, total: 0 } });
 
     render(<App />);
 
@@ -58,10 +64,7 @@ describe("App", () => {
   });
 
   it("should open the public detail with the map and Google Maps link", async () => {
-    mockFetch([
-      { items: [trip], limit: 9, page: 1, total: 1 },
-      trip,
-    ]);
+    mockFetch({ detail: trip, list: { items: [trip], limit: 9, page: 1, total: 1 } });
     const user = userEvent.setup();
 
     render(<App />);
@@ -75,7 +78,7 @@ describe("App", () => {
   });
 
   it("should persist the selected dark theme", async () => {
-    mockFetch([{ items: [], limit: 9, page: 1, total: 0 }]);
+    mockFetch({ list: { items: [], limit: 9, page: 1, total: 0 } });
     const user = userEvent.setup();
 
     render(<App />);
@@ -84,19 +87,110 @@ describe("App", () => {
     await waitFor(() => expect(document.documentElement.dataset["theme"]).toBe("dark"));
     expect(localStorage.getItem("ridebook-theme")).toBe("dark");
   });
+
+  it("should create a trip and redirect to its pending detail", async () => {
+    mockFetch({
+      create: pendingTrip,
+      detail: pendingTrip,
+      list: { items: [], limit: 9, page: 1, total: 0 },
+      session,
+    });
+    const user = userEvent.setup();
+
+    render(<App />);
+    await user.click(await screen.findByRole("button", { name: /Nouvelle balade/u }));
+    await user.type(screen.getByLabelText("Nom"), "Boucle vallée");
+    await user.type(screen.getByLabelText("Lien Google Maps"), "https://www.google.com/maps/dir/example");
+    await user.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+    expect(await screen.findByText("Carte en attente")).toBeInTheDocument();
+  });
+
+  it("should hide management actions from a non owner user", async () => {
+    mockFetch({
+      detail: { ...trip, ownerId: "other-user-id" },
+      list: { items: [trip], limit: 9, page: 1, total: 1 },
+      session,
+    });
+    const user = userEvent.setup();
+
+    render(<App />);
+    await user.click(await screen.findByRole("button", { name: "Voir le détail" }));
+
+    expect(await screen.findByRole("link", { name: /Ouvrir dans Google Maps/u })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Modifier/u })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Supprimer/u })).not.toBeInTheDocument();
+  });
+
+  it("should show retry on failed owned trips", async () => {
+    mockFetch({
+      detail: failedTrip,
+      list: { items: [failedTrip], limit: 9, page: 1, total: 1 },
+      retry: pendingTrip,
+      session,
+    });
+    const user = userEvent.setup();
+
+    render(<App />);
+    await user.click(await screen.findByRole("button", { name: "Voir le détail" }));
+    await user.click(await screen.findByRole("button", { name: /Réessayer/u }));
+
+    expect(await screen.findByText("Carte en attente")).toBeInTheDocument();
+  });
+
+  it("should poll pending maps until the iframe is available", async () => {
+    mockFetch({
+      detailSequence: [pendingTrip, trip],
+      list: { items: [pendingTrip], limit: 9, page: 1, total: 1 },
+    });
+    const user = userEvent.setup();
+
+    render(<App />);
+    await user.click(await screen.findByRole("button", { name: "Voir le détail" }));
+    expect(await screen.findByText("Carte en attente")).toBeInTheDocument();
+
+    expect(await screen.findByTitle("Carte de Boucle vallée", undefined, { timeout: 6500 })).toBeInTheDocument();
+  }, 8000);
 });
 
-function mockFetch(responses: unknown[]): void {
-  const fetchMock = vi.fn().mockImplementation(() => {
-    const response = responses.shift();
+function mockFetch(responses: {
+  create?: unknown;
+  detail?: unknown;
+  detailSequence?: unknown[];
+  list: unknown;
+  retry?: unknown;
+  session?: unknown;
+}): void {
+  const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+    const url = String(input);
 
-    return Promise.resolve(
-      new Response(JSON.stringify(response), {
-        headers: { "Content-Type": "application/json" },
-        status: 200,
-      }),
-    );
+    if (url.includes("/auth/me")) {
+      return jsonResponse(responses.session ?? { message: "Unauthorized" }, responses.session ? 200 : 401);
+    }
+
+    if (url.endsWith("/trips") && !url.includes("?")) {
+      return jsonResponse(responses.create);
+    }
+
+    if (url.endsWith("/map/retry")) {
+      return jsonResponse(responses.retry);
+    }
+
+    const response = url.match(/\/trips\/trip-id$/u)
+      ? (responses.detailSequence?.shift() ?? responses.detail)
+      : responses.list;
+
+    return jsonResponse(response);
   });
 
   vi.stubGlobal("fetch", fetchMock);
+}
+
+function jsonResponse(response: unknown, status = 200): Promise<Response> {
+  return Promise.resolve(
+    new Response(JSON.stringify(response), {
+      headers: { "Content-Type": "application/json" },
+      status,
+    }),
+  );
 }

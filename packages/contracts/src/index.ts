@@ -30,6 +30,7 @@ export interface InvitationDto {
 
 export interface TripDto {
   id: string;
+  ownerId: string;
   name: string;
   description: string | null;
   googleMapsUrl: string;
