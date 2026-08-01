@@ -17,7 +17,7 @@ Entrée : $ARGUMENTS
 
 Utilise le subagent **`orchestrator`** pour décomposer et déléguer. L'orchestrator doit :
 
-1. **Lire** le ticket (`gh issue view <id>`), `consigne-structuree.md`, `/rules`, le `CLAUDE.md` des sous-projets touchés.
+1. **Lire** le ticket (`gh issue view <id>`), `docs/cahier_des_charges_balades_moto.md`, `/rules`, le `CLAUDE.md` des sous-projets touchés.
 2. **Créer `docs/features/<feature>.md`** en suivant le template de `rules/03-feature.md` :
    - `status: draft`
    - lien vers l'issue, CDC ref, ADR refs
@@ -25,7 +25,7 @@ Utilise le subagent **`orchestrator`** pour décomposer et déléguer. L'orchest
 4. **Décomposer** en sous-tâches (TaskCreate) :
    - modif des types partagés → `packages/contracts`
    - domaine + cas d'usage → subagent `nest-expert` ou `frontend-expert`
-   - infra (Prisma repo, MQTT, HTTP client) → `nest-expert`
+   - infra (Prisma repo, mailer, HTTP client, worker queue) → `nest-expert`
    - interface (controllers + DTO in/out, UI) → expert approprié
    - tests unit + intégration + e2e → subagent `tester`
    - Bruno (`.bru` par route avec `docs` + `tests`) → `nest-expert`
@@ -42,8 +42,8 @@ Charger `.claude/rules/` (toutes) avant de commencer. Points d'attention :
 
 - **Clean architecture** : domain / application / infrastructure / interface — dependency rule stricte.
 - **DTO d'entrée ET de sortie** : toujours, jamais de type Prisma ni d'entité domaine exposée au contrôleur.
-- **Types partagés** via `@futurekawa/contracts` uniquement — si un type manque, l'ajouter au package + rebuild.
-- **Tests** : au moins unitaire sur la logique métier ; intégration si la feature traverse DB / MQTT / HTTP ; e2e si parcours utilisateur.
+- **Types partagés** via `@ridebook/contracts` uniquement — si un type manque, l'ajouter au package + rebuild.
+- **Tests** : au moins unitaire sur la logique métier ; intégration si la feature traverse DB / HTTP / mailer / worker ; e2e si parcours utilisateur.
 - **Documentation** : `docs/features/<feature>.md` + Swagger + Bruno + README/env.example si changé.
 - **Conventional Commits** : un commit par étape logique, pas un méga-commit final.
 - **REST** : pluriels, RFC 7807, `/api/v1`, pagination standard.

@@ -1,37 +1,42 @@
 # 08 — Observabilité
 
-## Logs structurés JSON
+## Logs
 
-- **`nestjs-pino`** sur les deux backends (déjà installé).
-- **Pas de `console.log`** dans le code applicatif (toléré uniquement pour debug local jetable, à retirer avant commit).
-- **Niveaux cohérents** :
-  - `trace` — détails très fins (rare)
-  - `debug` — aide au debug en dev
-  - `info` — événements normaux (requête, message MQTT traité)
-  - `warn` — situation anormale récupérable (retry, timeout)
-  - `error` — erreur nécessitant intervention
-- **Pas de secret dans les logs** (token, mot de passe, contenu personnel).
+- Logs JSON avec `nestjs-pino` côté API.
+- Logs structurés côté worker.
+- Pas de `console.log` dans le code applicatif.
+- Ne jamais logger mots de passe, JWT, refresh tokens, secrets SMTP ou cookies.
 
 ## Correlation ID
 
-- **Header** `x-correlation-id` généré par le frontend (ou l'entrée backend si absent), propagé :
-  - dans les logs de toute la requête
-  - dans les appels inter-backends (siège → pays)
-- Intercepteur Nest dédié pour l'injection / propagation.
+- Header `x-correlation-id` généré par le frontend ou l'API si absent.
+- Propagé dans les logs API et worker quand applicable.
 
-## Health endpoints
+## API
 
-Exposés par chaque backend :
+Logs requis :
 
-- **`/health`** — liveness (le process est vivant, répond 200).
-- **`/ready`** — readiness (dépendances critiques accessibles : DB, MQTT, SMTP si pays).
+- méthode HTTP ;
+- route ;
+- statut ;
+- durée ;
+- identifiant utilisateur si authentifié ;
+- correlation ID.
 
-Utilisés par Docker Compose (`healthcheck`) et un futur orchestrateur.
+## Worker
 
-## Monitoring (phase ultérieure)
+Logs requis :
 
-Non bloquant pour la soutenance, mais à mentionner dans le dossier technique :
+- identifiant job ;
+- identifiant balade ;
+- tentative ;
+- étape Selenium courante ;
+- durée ;
+- résultat ;
+- message d'erreur.
 
-- Exposition de métriques Prometheus (`/metrics`) si time permet.
-- Dashboard Grafana pour supervision T°/humidité agrégée.
-- Alerting technique (pas seulement métier) : broker down, DB down, backend pays isolé.
+## Health
+
+- `/health` : liveness.
+- `/ready` : readiness DB et SMTP si nécessaire.
+- Healthchecks Docker Compose pour API, worker et database.

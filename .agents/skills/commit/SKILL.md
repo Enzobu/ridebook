@@ -36,7 +36,7 @@ Commit les changements locaux et push la branche courante.
 ## Règles
 
 - **Types Conventional Commits** autorisés : `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `ci`.
-- **Scopes courants** : `pays`, `central`, `front`, `iot`, `contracts`, `docker`, `ci`, `docs`.
+- **Scopes courants** : `front`, `api`, `worker`, `contracts`, `docker`, `ci`, `docs`.
 - **Titre ≤ 100 caractères**, impératif anglais recommandé (français accepté par cohérence d'équipe).
 - **Corps** pour le POURQUOI, pas le QUOI (le diff dit le quoi).
 - **Jamais `--force` / `--force-with-lease`** sans accord explicite de l'utilisateur. Jamais sur `main` / `dev`.

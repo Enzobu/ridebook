@@ -16,7 +16,7 @@ Corrige un bug de manière propre et régressive-safe.
 3. **Créer une branche** `fix/<scope>-<desc-kebab>` depuis `dev`.
 4. **Déléguer** au subagent `tester` pour écrire un **test qui échoue** reproduisant le bug. Le test doit cibler le comportement attendu, pas l'implémentation.
 5. Vérifier que le test échoue bien sur la branche actuelle (`pnpm --filter <app> test -- -t "<nom>"`).
-6. **Corriger** le code avec le subagent approprié (`nest-expert`, `frontend-expert`, `iot-expert`).
+6. **Corriger** le code avec le subagent approprié (`nest-expert`, `frontend-expert`, `tester`).
 7. Vérifier que le test passe **et** que les autres tests continuent de passer (`pnpm --filter <app> test`).
 8. **Mettre à jour** `docs/features/<feature>.md` du ou des features touchées (`updated`, éventuellement commentaire dans TODO).
 9. **Mettre à jour Bruno** si le bug était sur une route (cas de réponse, shape, etc.).

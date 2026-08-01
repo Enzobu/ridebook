@@ -1,34 +1,33 @@
 # 09 — Monorepo & dépendances
 
-## Gestion des dépendances
+## Gestion
 
-- **Toujours** via `pnpm --filter <app> add <pkg>` depuis la racine du monorepo.
-- **Jamais** de `npm install` local dans un sous-dossier.
-- **`pnpm install`** à la racine installe tout le workspace.
+- Toujours utiliser `pnpm` depuis la racine.
+- Ajouter une dépendance via `pnpm --filter <workspace> add <pkg>`.
+- Jamais `npm install` dans un sous-dossier.
 
-## Versions
+## Workspaces attendus
 
-- Toutes les apps qui partagent une dépendance doivent utiliser la **même version** quand c'est possible.
-- **`pnpm outdated -r`** pour détecter les divergences.
-- Mise à jour coordonnée via PR dédiée (`chore(deps): bump X to Y`).
+- `apps/frontend`
+- `apps/api`
+- `apps/maps-worker`
+- `packages/contracts`
+- `packages/eslint-config`
+- `packages/tsconfig`
 
-## Pas de dépendances circulaires
+## Dépendances
 
-- `apps/*` ne dépendent **que de** `packages/*` (et deps externes).
-- `packages/*` ne dépendent **que d'autres** `packages/*` ou deps externes. Pas d'import de `apps/*`.
-- Entre packages : arborescence, pas de cycle.
+- `apps/*` ne dépendent que de `packages/*` et de dépendances externes.
+- `packages/*` ne dépendent pas de `apps/*`.
+- Pas de dépendances circulaires.
 
-## `@futurekawa/contracts` — règles spéciales
+## `@ridebook/contracts`
 
-- **Aucune dépendance runtime** : pas de `@nestjs/*`, `react`, `axios`, `zod`, `class-validator`.
-- **Uniquement des types + constantes statiques**.
-- **Pas d'import depuis `apps/*`** (le package ne connaît pas les apps).
-- **Rebuild obligatoire** après modification (`pnpm --filter @futurekawa/contracts build`) pour que les consommateurs voient les changements.
-- **`private: true`**, jamais publié sur npm.
+- Types, enums et constantes uniquement.
+- Pas de dépendance runtime Nest, React, Prisma, Zod ou class-validator.
+- `private: true`.
+- Rebuild obligatoire après modification : `pnpm --filter @ridebook/contracts build`.
 
-## Scripts workspace
+## Scripts standards
 
-Scripts standards à maintenir dans chaque app (`package.json`) :
-
-- `build`, `dev` / `start:dev`, `lint`, `test`, `test:e2e`
-- Permettent `pnpm -r build`, `pnpm -r lint`, `pnpm -r test` depuis la racine.
+Chaque app maintient : `build`, `dev` ou `start:dev`, `lint`, `test`, `test:e2e`.
