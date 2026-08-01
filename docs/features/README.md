@@ -11,3 +11,4 @@ updated: 2026-08-01
 - [Authentification](authentication.md)
 - [Balades](trips.md)
 - [Queue de récupération carte](map-job-queue.md)
+- [Retry carte et notifications](map-retry-notifications.md)

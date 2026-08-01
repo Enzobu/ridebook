@@ -23,8 +23,27 @@ describe("JobRepository", () => {
 
   it("should recover stalled processing jobs through the failure path", async () => {
     const prisma = {
-      $transaction: vi.fn().mockResolvedValue(undefined),
+      $transaction: vi.fn().mockImplementation(async (callback) =>
+        callback({
+          mapEmbedJob: {
+            update: vi.fn(),
+            updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+          },
+          trip: { update: vi.fn() },
+        }),
+      ),
       mapEmbedJob: {
+        findUniqueOrThrow: vi.fn().mockResolvedValue({
+          attempts: 3,
+          id: "job-id",
+          lastError: "Traitement interrompu ou bloqué.",
+          maxAttempts: 3,
+          trip: {
+            googleMapsUrl: "https://www.google.com/maps/dir/example",
+            name: "Boucle test",
+          },
+          tripId: "trip-id",
+        }),
         findMany: vi.fn().mockResolvedValue([
           {
             attempts: 3,
@@ -35,13 +54,48 @@ describe("JobRepository", () => {
         ]),
         update: vi.fn(),
       },
-      trip: {
-        update: vi.fn(),
-      },
     };
     const repository = new JobRepository(prisma as never);
 
-    await expect(repository.recoverStalledJobs(15, now)).resolves.toBe(1);
+    await expect(repository.recoverStalledJobs(15, now)).resolves.toHaveLength(1);
     expect(prisma.$transaction).toHaveBeenCalledOnce();
+  });
+
+  it("should not emit a second notification for an already notified definitive failure", async () => {
+    const prisma = {
+      $transaction: vi.fn().mockImplementation(async (callback) =>
+        callback({
+          mapEmbedJob: {
+            update: vi.fn(),
+            updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+          },
+          trip: { update: vi.fn() },
+        }),
+      ),
+    };
+    const repository = new JobRepository(prisma as never);
+
+    const result = await repository.markFailure(
+      {
+        attempts: 3,
+        completedAt: null,
+        createdAt: now,
+        failedAt: null,
+        failureNotifiedAt: now,
+        id: "job-id",
+        lastError: null,
+        maxAttempts: 3,
+        nextAttemptAt: now,
+        requestedAt: now,
+        startedAt: now,
+        status: MapEmbedJobStatus.PROCESSING,
+        tripId: "trip-id",
+        updatedAt: now,
+      },
+      new Error("Erreur définitive"),
+      now,
+    );
+
+    expect(result).toBeNull();
   });
 });

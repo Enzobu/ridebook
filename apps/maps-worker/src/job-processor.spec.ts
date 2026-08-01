@@ -52,6 +52,7 @@ function buildJob(): MapEmbedJob {
     completedAt: null,
     createdAt: now,
     failedAt: null,
+    failureNotifiedAt: null,
     id: "job-id",
     lastError: null,
     maxAttempts: 3,
