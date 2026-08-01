@@ -10,6 +10,8 @@ cdc-ref: "§6"
 
 Le worker `apps/maps-worker` est un service Node.js séparé de l'API.
 
-Il recevra la logique de récupération des jobs en base, de verrouillage et d'extraction Selenium dans les tickets dédiés.
+Il traite les jobs de récupération en base avec un claim conditionnel pour éviter que deux workers traitent le même job.
 
 Les captures Selenium seront stockées dans `SELENIUM_SCREENSHOT_DIR`, mappé depuis l'hôte via `SELENIUM_SCREENSHOT_VOLUME_PATH`.
+
+Le worker utilise actuellement un extracteur fake pour valider le cycle de queue sans dépendre du vrai Google Maps. Selenium réel sera ajouté dans la feature dédiée.

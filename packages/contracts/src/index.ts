@@ -2,6 +2,8 @@ export type UserRole = "ADMIN" | "USER";
 
 export type MapStatus = "PENDING" | "PROCESSING" | "SUCCESS" | "FAILED";
 
+export type MapEmbedJobStatus = "PENDING" | "PROCESSING" | "SUCCESS" | "FAILED";
+
 export interface HealthDto {
   status: "ok";
   service: string;

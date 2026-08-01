@@ -65,6 +65,7 @@ services:
       SELENIUM_SCREENSHOT_DIR: "${SELENIUM_SCREENSHOT_DIR:-/storage/selenium-errors}"
       WORKER_POLL_INTERVAL_MS: "${WORKER_POLL_INTERVAL_MS:-5000}"
       WORKER_STALLED_JOB_TIMEOUT_MINUTES: "${WORKER_STALLED_JOB_TIMEOUT_MINUTES:-15}"
+      WORKER_FAKE_MAP_EMBED_URL: "${WORKER_FAKE_MAP_EMBED_URL:-https://www.google.com/maps/embed?pb=fake}"
     volumes:
       - type: bind
         source: "${SELENIUM_SCREENSHOT_VOLUME_PATH:-./.data/selenium-errors}"

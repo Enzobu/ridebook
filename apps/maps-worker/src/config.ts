@@ -8,6 +8,7 @@ const workerConfigSchema = z.object({
   seleniumMaxAttempts: z.coerce.number().int().positive(),
   seleniumTimeoutMs: z.coerce.number().int().positive(),
   stalledJobTimeoutMinutes: z.coerce.number().int().positive(),
+  fakeMapEmbedUrl: z.string().url(),
 });
 
 export type WorkerConfig = z.infer<typeof workerConfigSchema>;
@@ -21,5 +22,7 @@ export function loadWorkerConfig(): WorkerConfig {
     seleniumMaxAttempts: process.env["SELENIUM_MAX_ATTEMPTS"] ?? "3",
     seleniumTimeoutMs: process.env["SELENIUM_TIMEOUT_MS"] ?? "60000",
     stalledJobTimeoutMinutes: process.env["WORKER_STALLED_JOB_TIMEOUT_MINUTES"] ?? "15",
+    fakeMapEmbedUrl:
+      process.env["WORKER_FAKE_MAP_EMBED_URL"] ?? "https://www.google.com/maps/embed?pb=fake",
   });
 }
