@@ -59,6 +59,8 @@ services:
     environment:
       NODE_ENV: "${NODE_ENV:-production}"
       DATABASE_URL: "mysql://${MARIADB_USER:-ridebook}:${MARIADB_PASSWORD:-change-me}@database:3306/${MARIADB_DATABASE:-ridebook}"
+      WORKER_EXTRACTOR_MODE: "${WORKER_EXTRACTOR_MODE:-selenium}"
+      SELENIUM_BINARY_PATH: "${SELENIUM_BINARY_PATH:-/usr/bin/chromium}"
       SELENIUM_HEADLESS: "${SELENIUM_HEADLESS:-true}"
       SELENIUM_TIMEOUT_MS: "${SELENIUM_TIMEOUT_MS:-60000}"
       SELENIUM_MAX_ATTEMPTS: "${SELENIUM_MAX_ATTEMPTS:-3}"

@@ -4,19 +4,20 @@ import { PrismaClient } from "@prisma/client";
 import { loadWorkerConfig } from "./config.js";
 import { JobProcessor } from "./job-processor.js";
 import { JobRepository } from "./job-repository.js";
-import { FakeMapEmbedExtractor } from "./map-embed-extractor.js";
+import { FakeMapEmbedExtractor, MapEmbedExtractor, SeleniumMapEmbedExtractor } from "./map-embed-extractor.js";
 
 async function bootstrap(): Promise<void> {
   const config = loadWorkerConfig();
   await mkdir(config.screenshotDir, { recursive: true });
   const prisma = new PrismaClient();
   const repository = new JobRepository(prisma);
-  const extractor = new FakeMapEmbedExtractor(config.fakeMapEmbedUrl);
+  const extractor = createExtractor(config);
   const processor = new JobProcessor(extractor, repository);
 
   process.stdout.write(
     JSON.stringify({
       event: "worker.started",
+      extractorMode: config.extractorMode,
       pollIntervalMs: config.pollIntervalMs,
       screenshotDir: config.screenshotDir,
       seleniumHeadless: config.seleniumHeadless,
@@ -46,3 +47,16 @@ async function tick(
 }
 
 void bootstrap();
+
+function createExtractor(config: ReturnType<typeof loadWorkerConfig>): MapEmbedExtractor {
+  if (config.extractorMode === "fake") {
+    return new FakeMapEmbedExtractor(config.fakeMapEmbedUrl);
+  }
+
+  return new SeleniumMapEmbedExtractor({
+    binaryPath: config.seleniumBinaryPath,
+    headless: config.seleniumHeadless,
+    screenshotDir: config.screenshotDir,
+    timeoutMs: config.seleniumTimeoutMs,
+  });
+}
