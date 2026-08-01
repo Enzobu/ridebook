@@ -9,3 +9,4 @@ updated: 2026-08-01
 
 - [Bootstrap monorepo](bootstrap.md)
 - [Authentification](authentication.md)
+- [Balades](trips.md)

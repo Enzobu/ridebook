@@ -12,6 +12,20 @@ enum UserRole {
   USER
 }
 
+enum MapStatus {
+  PENDING
+  PROCESSING
+  SUCCESS
+  FAILED
+}
+
+enum MapEmbedJobStatus {
+  PENDING
+  PROCESSING
+  SUCCESS
+  FAILED
+}
+
 model User {
   id           String         @id @default(cuid())
   email        String         @unique
@@ -23,8 +37,55 @@ model User {
   refreshTokens      RefreshToken[]       @relation("UserRefreshTokens")
   createdInvitations Invitation[]         @relation("InvitationCreator")
   usedInvitations    Invitation[]         @relation("InvitationUser")
+  trips              Trip[]               @relation("TripOwner")
 
   @@map("users")
+}
+
+model Trip {
+  id              String    @id @default(cuid())
+  ownerId         String
+  name            String
+  description     String?   @db.Text
+  googleMapsUrl   String    @db.VarChar(2048)
+  mapEmbedUrl     String?   @db.VarChar(2048)
+  distanceKm      Decimal?  @db.Decimal(8, 1)
+  durationMinutes Int?
+  mapStatus       MapStatus @default(PENDING)
+  mapLastError    String?   @db.Text
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  owner User          @relation("TripOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  jobs  MapEmbedJob[]
+
+  @@index([ownerId])
+  @@index([deletedAt])
+  @@index([mapStatus])
+  @@map("trips")
+}
+
+model MapEmbedJob {
+  id            String            @id @default(cuid())
+  tripId        String
+  status        MapEmbedJobStatus @default(PENDING)
+  attempts      Int               @default(0)
+  maxAttempts   Int               @default(3)
+  requestedAt   DateTime          @default(now())
+  startedAt     DateTime?
+  completedAt   DateTime?
+  failedAt      DateTime?
+  nextAttemptAt DateTime          @default(now())
+  lastError     String?           @db.Text
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@index([tripId])
+  @@index([status, nextAttemptAt])
+  @@map("map_embed_jobs")
 }
 
 model RefreshToken {

@@ -40,3 +40,11 @@ Endpoints auth :
 - `GET /api/v1/auth/me`
 - `POST /api/v1/auth/register`
 - `POST /api/v1/invitations`
+
+Endpoints balades :
+
+- `GET /api/v1/trips`
+- `POST /api/v1/trips`
+- `GET /api/v1/trips/:id`
+- `PATCH /api/v1/trips/:id`
+- `DELETE /api/v1/trips/:id`

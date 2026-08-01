@@ -1,0 +1,24 @@
+meta {
+  name: Update trip
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{apiUrl}}/api/v1/trips/{{tripId}}
+  body: json
+}
+
+body:json {
+  {
+    "name": "Boucle mise à jour"
+  }
+}
+
+docs {
+  Modifie une balade. Réservé au propriétaire ou à un administrateur.
+}
+
+tests {
+  expect([200, 401, 403, 404]).to.include(res.status);
+}

@@ -6,6 +6,7 @@ import { LoggerModule } from "nestjs-pino";
 
 import { AppController } from "./app.controller.js";
 import { AuthModule } from "./auth/auth.module.js";
+import { TripsModule } from "./trips/trips.module.js";
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { AuthModule } from "./auth/auth.module.js";
       },
     ]),
     AuthModule,
+    TripsModule,
   ],
   controllers: [AppController],
   providers: [
