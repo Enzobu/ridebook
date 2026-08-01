@@ -32,6 +32,13 @@ const session = {
     updatedAt: "2026-08-01T12:00:00.000Z",
   },
 } as const;
+const adminSession = {
+  user: {
+    ...session.user,
+    email: "admin@example.com",
+    role: "ADMIN",
+  },
+} as const;
 
 describe("App", () => {
   beforeEach(() => {
@@ -151,12 +158,46 @@ describe("App", () => {
 
     expect(await screen.findByTitle("Carte de Boucle vallée", undefined, { timeout: 6500 })).toBeInTheDocument();
   }, 8000);
+
+  it("should let admins generate and copy invitation links", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    mockFetch({
+      invitation: {
+        createdAt: "2026-08-01T12:00:00.000Z",
+        expiresAt: "2026-08-01T13:00:00.000Z",
+        id: "invitation-id",
+        invitationUrl: "http://localhost:3000/register?token=abc",
+      },
+      list: { items: [], limit: 9, page: 1, total: 0 },
+      session: adminSession,
+    });
+    const user = userEvent.setup();
+
+    render(<App />);
+    await user.click(await screen.findByRole("button", { name: /Invitations/u }));
+    await user.click(screen.getByRole("button", { name: /Générer un lien/u }));
+    await user.click(await screen.findByRole("button", { name: "Copier" }));
+
+    expect(screen.getByLabelText("Lien d'invitation généré")).toHaveValue("http://localhost:3000/register?token=abc");
+    expect(await screen.findByText("Lien copié.")).toBeInTheDocument();
+  });
+
+  it("should hide invitation access from non admin users", async () => {
+    mockFetch({ list: { items: [], limit: 9, page: 1, total: 0 }, session });
+
+    render(<App />);
+
+    await screen.findByRole("button", { name: /Nouvelle balade/u });
+    expect(screen.queryByRole("button", { name: /Invitations/u })).not.toBeInTheDocument();
+  });
 });
 
 function mockFetch(responses: {
   create?: unknown;
   detail?: unknown;
   detailSequence?: unknown[];
+  invitation?: unknown;
   list: unknown;
   retry?: unknown;
   session?: unknown;
@@ -174,6 +215,10 @@ function mockFetch(responses: {
 
     if (url.endsWith("/map/retry")) {
       return jsonResponse(responses.retry);
+    }
+
+    if (url.endsWith("/invitations")) {
+      return jsonResponse(responses.invitation);
     }
 
     const response = url.match(/\/trips\/trip-id$/u)
