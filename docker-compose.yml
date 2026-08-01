@@ -25,6 +25,7 @@ services:
     environment:
       NODE_ENV: "${NODE_ENV:-production}"
       PORT: "3000"
+      FRONTEND_URL: "${FRONTEND_URL:-http://localhost:3000}"
       DATABASE_URL: "mysql://${MARIADB_USER:-ridebook}:${MARIADB_PASSWORD:-change-me}@database:3306/${MARIADB_DATABASE:-ridebook}"
       CORS_ORIGIN: "${CORS_ORIGIN:-http://localhost:3000}"
       JWT_ACCESS_SECRET: "${JWT_ACCESS_SECRET:-change-access-secret}"

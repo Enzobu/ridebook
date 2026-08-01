@@ -1,0 +1,26 @@
+meta {
+  name: Register with invitation
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{apiUrl}}/api/v1/auth/register
+  body: json
+}
+
+body:json {
+  {
+    "email": "user@example.com",
+    "password": "correct horse battery staple",
+    "token": "invitation-token"
+  }
+}
+
+docs {
+  Crée un compte utilisateur depuis une invitation valide, non expirée et non utilisée.
+}
+
+tests {
+  expect([201, 400, 404, 409, 410]).to.include(res.status);
+}

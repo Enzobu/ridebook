@@ -11,10 +11,32 @@ pnpm --filter api lint
 pnpm --filter api test
 ```
 
+## Prisma
+
+```bash
+pnpm --filter api prisma:generate
+pnpm --filter api prisma:migrate
+```
+
+## Premier administrateur
+
+Après avoir renseigné `ADMIN_EMAIL` et `ADMIN_PASSWORD` :
+
+```bash
+pnpm --filter api create-admin
+```
+
 ## Points d'entrée
 
 - `GET /health`
 - `GET /ready`
 - Swagger : `/api-docs`
 
-Les endpoints métier seront ajoutés par les tickets auth, balades et worker.
+Endpoints auth :
+
+- `POST /api/v1/auth/login`
+- `POST /api/v1/auth/refresh`
+- `POST /api/v1/auth/logout`
+- `GET /api/v1/auth/me`
+- `POST /api/v1/auth/register`
+- `POST /api/v1/invitations`

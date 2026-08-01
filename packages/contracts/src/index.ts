@@ -7,6 +7,25 @@ export interface HealthDto {
   service: string;
 }
 
+export interface UserDto {
+  id: string;
+  email: string;
+  role: UserRole;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AuthSessionDto {
+  user: UserDto;
+}
+
+export interface InvitationDto {
+  id: string;
+  invitationUrl: string;
+  expiresAt: string;
+  createdAt: string;
+}
+
 export interface TripDto {
   id: string;
   name: string;

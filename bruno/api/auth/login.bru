@@ -1,0 +1,26 @@
+meta {
+  name: Login
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{apiUrl}}/api/v1/auth/login
+  body: json
+}
+
+body:json {
+  {
+    "email": "admin@example.com",
+    "password": "correct horse battery staple"
+  }
+}
+
+docs {
+  Connecte un utilisateur et pose les cookies HTTP-only access/refresh.
+}
+
+tests {
+  expect(res.status).to.equal(200);
+  expect(res.body.user.email).to.be.a("string");
+}
