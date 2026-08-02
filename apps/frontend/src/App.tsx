@@ -7,6 +7,7 @@ import {
   Edit3,
   ExternalLink,
   Gauge,
+  Link2,
   ListFilter,
   Loader2,
   LogOut,
@@ -24,6 +25,7 @@ import { type FormEvent, type ReactElement, useEffect, useState } from "react";
 
 import {
   createTrip,
+  createInvitation,
   deleteTrip,
   getSession,
   getTrip,
@@ -44,6 +46,7 @@ type ViewState =
   | { name: "list" }
   | { name: "detail"; tripId: string }
   | { name: "form"; trip?: TripDto }
+  | { name: "invitations" }
   | { name: "login" }
   | { name: "register" };
 
@@ -100,6 +103,12 @@ export function App(): ReactElement {
                 <Plus size={16} />
                 Nouvelle balade
               </button>
+              {user.role === "ADMIN" && (
+                <button className="secondary-action compact" onClick={() => setView({ name: "invitations" })} type="button">
+                  <Link2 size={16} />
+                  Invitations
+                </button>
+              )}
               <button className="icon-button" onClick={handleLogout} title="Déconnexion" type="button">
                 <LogOut size={16} />
               </button>
@@ -172,6 +181,12 @@ export function App(): ReactElement {
             showToast("Compte créé. Tu peux te connecter.", "success");
           }}
           onToast={showToast}
+        />
+      )}
+      {view.name === "invitations" && (
+        <InvitationsScreen
+          onToast={showToast}
+          user={user}
         />
       )}
     </main>
@@ -629,6 +644,74 @@ function RegisterScreen({
             Retour
           </button>
         </div>
+      </form>
+    </section>
+  );
+}
+
+function InvitationsScreen({
+  onToast,
+  user,
+}: {
+  onToast: (message: string, tone: "success" | "error") => void;
+  user: UserDto | null;
+}): ReactElement {
+  const [email, setEmail] = useState("");
+  const [invitationUrl, setInvitationUrl] = useState("");
+
+  if (user?.role !== "ADMIN") {
+    return (
+      <section className="content narrow">
+        <ErrorState />
+      </section>
+    );
+  }
+
+  const submit = async (event: FormEvent): Promise<void> => {
+    event.preventDefault();
+    try {
+      const invitation = await createInvitation(email || undefined);
+      setInvitationUrl(invitation.invitationUrl);
+      onToast("Invitation générée.", "success");
+    } catch {
+      onToast("Impossible de générer l'invitation.", "error");
+    }
+  };
+
+  const copy = async (): Promise<void> => {
+    try {
+      await navigator.clipboard.writeText(invitationUrl);
+      onToast("Lien copié.", "success");
+    } catch {
+      onToast("Copie impossible.", "error");
+    }
+  };
+
+  return (
+    <section className="content narrow">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Administration</p>
+          <h1>Invitations</h1>
+        </div>
+      </div>
+      <form className="form-panel" onSubmit={(event) => void submit(event)}>
+        <p className="form-hint">Le lien est valide 1 heure et utilisable une seule fois.</p>
+        <label>
+          Email optionnel
+          <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
+        </label>
+        <button className="primary-action" type="submit">
+          Générer un lien
+        </button>
+        {invitationUrl && (
+          <div className="copy-row">
+            <input readOnly value={invitationUrl} aria-label="Lien d'invitation généré" />
+            <button className="secondary-action compact" onClick={() => void copy()} type="button">
+              Copier
+            </button>
+          </div>
+        )}
       </form>
     </section>
   );

@@ -433,6 +433,12 @@ h2 {
   gap: 7px;
 }
 
+.form-hint {
+  color: var(--muted);
+  line-height: 1.5;
+  margin: 0;
+}
+
 .form-panel input,
 .form-panel textarea {
   background: var(--surface-muted);
@@ -449,6 +455,12 @@ h2 {
   display: grid;
   gap: 12px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.copy-row {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
 }
 
 .toast {
