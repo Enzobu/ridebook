@@ -1,4 +1,4 @@
-name: Build
+name: CI
 
 on:
   push:
@@ -9,10 +9,43 @@ on:
   pull_request:
 
 jobs:
+  quality:
+    name: Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      - name: Validate Docker Compose
+        run: pnpm compose:config
+
   deploy-prod:
     name: Deploy prod
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    needs: quality
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
       - name: Deploy prod

@@ -1,0 +1,34 @@
+meta {
+  name: Retry trip map
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{apiUrl}}/api/v1/trips/{{tripId}}/map/retry
+  body: none
+  auth: inherit
+}
+
+docs {
+  Relance la récupération de carte pour une balade en échec.
+
+  Permissions:
+  - ADMIN: toute balade.
+  - USER: uniquement ses propres balades.
+
+  Réponses:
+  - 200: balade repassée en mapStatus=PENDING, nouveau job créé.
+  - 401: non connecté.
+  - 403: non propriétaire et non admin.
+  - 404: balade inexistante ou supprimée.
+  - 409: récupération déjà active ou balade pas en échec.
+}
+
+tests {
+  test("returns a trip response", function() {
+    expect(res.status).to.equal(200);
+    expect(res.body).to.have.property("id");
+    expect(res.body).to.have.property("mapStatus");
+  });
+}

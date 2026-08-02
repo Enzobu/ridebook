@@ -1,0 +1,28 @@
+meta {
+  name: Create trip
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{apiUrl}}/api/v1/trips
+  body: json
+}
+
+body:json {
+  {
+    "name": "Boucle des Cévennes",
+    "description": "Balade avec passage par le Vigan et l'Espérou.",
+    "googleMapsUrl": "https://www.google.com/maps/dir/example",
+    "distanceKm": 224.5,
+    "durationMinutes": 270
+  }
+}
+
+docs {
+  Crée une balade pour l'utilisateur connecté et crée un job de récupération de carte.
+}
+
+tests {
+  expect([201, 401]).to.include(res.status);
+}
