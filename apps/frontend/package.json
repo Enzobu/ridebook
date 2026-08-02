@@ -1,0 +1,32 @@
+{
+  "name": "frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "pnpm --filter @ridebook/contracts build && tsc -p tsconfig.json && vite build",
+    "dev": "vite --host 0.0.0.0",
+    "lint": "pnpm --filter @ridebook/contracts build && tsc -p tsconfig.json --noEmit",
+    "preview": "vite preview --host 0.0.0.0",
+    "test": "pnpm --filter @ridebook/contracts build && vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@ridebook/contracts": "workspace:*",
+    "@vitejs/plugin-react": "^5.0.0",
+    "lucide-react": "^0.468.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "vite": "^7.0.6"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^7.0.0",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^24.1.0",
+    "@types/react": "^19.1.9",
+    "@types/react-dom": "^19.1.7",
+    "jsdom": "^30.0.1",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

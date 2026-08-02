@@ -1,0 +1,104 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+      args:
+        VITE_API_URL: "${VITE_API_URL:-http://localhost:3001}"
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      API_URL: "${API_URL:-http://localhost:3001}"
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${API_PORT:-3001}:3000"
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      NODE_ENV: "${NODE_ENV:-production}"
+      PORT: "3000"
+      FRONTEND_URL: "${FRONTEND_URL:-http://localhost:3000}"
+      DATABASE_URL: "mysql://${MARIADB_USER:-ridebook}:${MARIADB_PASSWORD:-change-me}@database:3306/${MARIADB_DATABASE:-ridebook}"
+      CORS_ORIGIN: "${CORS_ORIGIN:-http://localhost:3000}"
+      JWT_ACCESS_SECRET: "${JWT_ACCESS_SECRET:-change-access-secret}"
+      JWT_REFRESH_SECRET: "${JWT_REFRESH_SECRET:-change-refresh-secret}"
+      JWT_ACCESS_EXPIRES_IN: "${JWT_ACCESS_EXPIRES_IN:-24h}"
+      JWT_REFRESH_EXPIRES_IN: "${JWT_REFRESH_EXPIRES_IN:-7d}"
+      COOKIE_DOMAIN: "${COOKIE_DOMAIN:-localhost}"
+      COOKIE_SECURE: "${COOKIE_SECURE:-false}"
+      ADMIN_NOTIFICATION_EMAIL: "${ADMIN_NOTIFICATION_EMAIL:-admin@example.com}"
+      SMTP_HOST: "${SMTP_HOST:-ssl0.ovh.net}"
+      SMTP_PORT: "${SMTP_PORT:-587}"
+      SMTP_SECURE: "${SMTP_SECURE:-false}"
+      SMTP_USER: "${SMTP_USER:-}"
+      SMTP_PASSWORD: "${SMTP_PASSWORD:-}"
+      SMTP_FROM: "${SMTP_FROM:-Ridebook <no-reply@example.com>}"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  maps-worker:
+    build:
+      context: .
+      dockerfile: apps/maps-worker/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      NODE_ENV: "${NODE_ENV:-production}"
+      DATABASE_URL: "mysql://${MARIADB_USER:-ridebook}:${MARIADB_PASSWORD:-change-me}@database:3306/${MARIADB_DATABASE:-ridebook}"
+      ADMIN_NOTIFICATION_EMAIL: "${ADMIN_NOTIFICATION_EMAIL:-admin@example.com}"
+      WORKER_EXTRACTOR_MODE: "${WORKER_EXTRACTOR_MODE:-selenium}"
+      SELENIUM_BINARY_PATH: "${SELENIUM_BINARY_PATH:-/usr/bin/chromium}"
+      SELENIUM_HEADLESS: "${SELENIUM_HEADLESS:-true}"
+      SELENIUM_TIMEOUT_MS: "${SELENIUM_TIMEOUT_MS:-60000}"
+      SELENIUM_MAX_ATTEMPTS: "${SELENIUM_MAX_ATTEMPTS:-3}"
+      SELENIUM_SCREENSHOT_DIR: "${SELENIUM_SCREENSHOT_DIR:-/storage/selenium-errors}"
+      WORKER_POLL_INTERVAL_MS: "${WORKER_POLL_INTERVAL_MS:-5000}"
+      WORKER_STALLED_JOB_TIMEOUT_MINUTES: "${WORKER_STALLED_JOB_TIMEOUT_MINUTES:-15}"
+      WORKER_FAKE_MAP_EMBED_URL: "${WORKER_FAKE_MAP_EMBED_URL:-https://www.google.com/maps/embed?pb=fake}"
+      SMTP_HOST: "${SMTP_HOST:-ssl0.ovh.net}"
+      SMTP_PORT: "${SMTP_PORT:-587}"
+      SMTP_SECURE: "${SMTP_SECURE:-false}"
+      SMTP_USER: "${SMTP_USER:-}"
+      SMTP_PASSWORD: "${SMTP_PASSWORD:-}"
+      SMTP_FROM: "${SMTP_FROM:-Ridebook <no-reply@example.com>}"
+    volumes:
+      - type: bind
+        source: "${SELENIUM_SCREENSHOT_VOLUME_PATH:-./.data/selenium-errors}"
+        target: /storage/selenium-errors
+
+  database:
+    image: mariadb:11.4
+    restart: unless-stopped
+    expose:
+      - "3306"
+    environment:
+      MARIADB_DATABASE: "${MARIADB_DATABASE:-ridebook}"
+      MARIADB_USER: "${MARIADB_USER:-ridebook}"
+      MARIADB_PASSWORD: "${MARIADB_PASSWORD:-change-me}"
+      MARIADB_ROOT_PASSWORD: "${MARIADB_ROOT_PASSWORD:-change-root-me}"
+    volumes:
+      - type: bind
+        source: "${DB_VOLUME_PATH:-./.data/mariadb}"
+        target: /var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb-admin ping -h localhost -u $$MARIADB_USER --password=$$MARIADB_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
