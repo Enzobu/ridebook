@@ -206,7 +206,7 @@ function mockFetch(responses: {
     const url = String(input);
 
     if (url.includes("/auth/me")) {
-      return jsonResponse(responses.session ?? { message: "Unauthorized" }, responses.session ? 200 : 401);
+      return jsonResponse(responses.session ?? { user: null });
     }
 
     if (url.endsWith("/trips") && !url.includes("?")) {

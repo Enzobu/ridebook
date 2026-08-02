@@ -89,6 +89,22 @@ export class AuthService {
     return user;
   }
 
+  async getUserFromAccessToken(accessToken: string | undefined): Promise<User | null> {
+    if (!accessToken) {
+      return null;
+    }
+
+    try {
+      const payload = await this.jwtService.verifyAsync<JwtUserPayload>(accessToken, {
+        secret: this.configService.getOrThrow<string>("JWT_ACCESS_SECRET"),
+      });
+
+      return await this.getAuthenticatedUser(payload.sub);
+    } catch {
+      return null;
+    }
+  }
+
   async createUserFromInvitation(email: string, password: string): Promise<User> {
     const existingUser = await this.prismaService.user.findUnique({
       where: { email: email.toLowerCase() },
