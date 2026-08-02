@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -131,6 +132,50 @@ export class TripsService {
       data: { deletedAt: new Date() },
       where: { id },
     });
+  }
+
+  async retryMap(id: string, actor: JwtUserPayload): Promise<TripResponseDto> {
+    const trip = await this.getVisibleTrip(id);
+    this.assertCanManageTrip(trip, actor);
+
+    const retriedTrip = await this.prismaService.$transaction(async (transaction) => {
+      const activeJob = await transaction.mapEmbedJob.findFirst({
+        where: {
+          status: { in: [MapEmbedJobStatus.PENDING, MapEmbedJobStatus.PROCESSING] },
+          tripId: id,
+        },
+      });
+
+      if (activeJob) {
+        throw new ConflictException("Une récupération de carte est déjà en cours.");
+      }
+
+      if (trip.mapStatus !== MapStatus.FAILED) {
+        throw new ConflictException("La carte de cette balade n'est pas en échec.");
+      }
+
+      const savedTrip = await transaction.trip.update({
+        data: {
+          mapEmbedUrl: null,
+          mapLastError: null,
+          mapStatus: MapStatus.PENDING,
+        },
+        where: { id },
+      });
+
+      await transaction.mapEmbedJob.create({
+        data: {
+          maxAttempts: 3,
+          nextAttemptAt: new Date(),
+          status: MapEmbedJobStatus.PENDING,
+          tripId: id,
+        },
+      });
+
+      return savedTrip;
+    });
+
+    return toTripResponseDto(retriedTrip);
   }
 
   private async getVisibleTrip(id: string): Promise<Trip> {

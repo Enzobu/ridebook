@@ -1,5 +1,5 @@
-import { ForbiddenException } from "@nestjs/common";
-import { MapStatus, Prisma, UserRole } from "@prisma/client";
+import { ConflictException, ForbiddenException } from "@nestjs/common";
+import { MapEmbedJobStatus, MapStatus, Prisma, UserRole } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PrismaService } from "../prisma/prisma.service.js";
@@ -65,5 +65,61 @@ describe("TripsService", () => {
     );
 
     expect(result.name).toBe("Nouveau nom");
+  });
+
+  it("should reject map retry when an active job already exists", async () => {
+    const service = new TripsService(prismaService);
+    vi.mocked(prismaService.trip.findFirst).mockResolvedValue({ ...baseTrip, mapStatus: MapStatus.FAILED });
+    vi.mocked(prismaService.$transaction).mockImplementation(async (callback) =>
+      callback({
+        mapEmbedJob: {
+          findFirst: vi.fn().mockResolvedValue({ id: "active-job", status: MapEmbedJobStatus.PENDING }),
+        },
+        trip: { update: vi.fn() },
+      } as never),
+    );
+
+    await expect(
+      service.retryMap("trip-id", { email: "owner@example.com", role: UserRole.USER, sub: "owner-id" }),
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it("should reject map retry from a non owner user", async () => {
+    const service = new TripsService(prismaService);
+    vi.mocked(prismaService.trip.findFirst).mockResolvedValue({ ...baseTrip, mapStatus: MapStatus.FAILED });
+
+    await expect(
+      service.retryMap("trip-id", { email: "user@example.com", role: UserRole.USER, sub: "other-user-id" }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it("should allow the owner to retry a failed map", async () => {
+    const service = new TripsService(prismaService);
+    const failedTrip = { ...baseTrip, mapLastError: "Erreur", mapStatus: MapStatus.FAILED };
+    const mapEmbedJobCreate = vi.fn();
+    vi.mocked(prismaService.trip.findFirst).mockResolvedValue(failedTrip);
+    vi.mocked(prismaService.$transaction).mockImplementation(async (callback) =>
+      callback({
+        mapEmbedJob: {
+          create: mapEmbedJobCreate,
+          findFirst: vi.fn().mockResolvedValue(null),
+        },
+        trip: { update: vi.fn().mockResolvedValue({ ...failedTrip, mapLastError: null, mapStatus: MapStatus.PENDING }) },
+      } as never),
+    );
+
+    const result = await service.retryMap("trip-id", {
+      email: "owner@example.com",
+      role: UserRole.USER,
+      sub: "owner-id",
+    });
+
+    expect(result.mapStatus).toBe(MapStatus.PENDING);
+    expect(mapEmbedJobCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        status: MapEmbedJobStatus.PENDING,
+        tripId: "trip-id",
+      }),
+    });
   });
 });

@@ -1,3 +1,6 @@
+import { BrowserLocator, BrowserSession, createSeleniumBrowserSession, saveScreenshot } from "./browser-session.js";
+import { assertValidGoogleMapsEmbedUrl } from "./embed-url-validator.js";
+
 export interface MapEmbedExtractor {
   extract(googleMapsUrl: string): Promise<string>;
 }
@@ -6,6 +9,123 @@ export class FakeMapEmbedExtractor implements MapEmbedExtractor {
   constructor(private readonly embedUrl: string) {}
 
   async extract(_googleMapsUrl: string): Promise<string> {
-    return this.embedUrl;
+    return assertValidGoogleMapsEmbedUrl(this.embedUrl);
   }
+}
+
+export interface SeleniumMapEmbedExtractorOptions {
+  binaryPath: string;
+  headless: boolean;
+  screenshotDir: string;
+  timeoutMs: number;
+  createSession?: () => Promise<BrowserSession>;
+}
+
+const CONSENT_BUTTON_LOCATORS: BrowserLocator[] = [
+  { type: "xpath", value: "//button[.//*[contains(text(),'Tout accepter')]]" },
+  { type: "xpath", value: "//button[contains(., 'Tout accepter')]" },
+  { type: "xpath", value: "//button[contains(., 'Accept all')]" },
+  { type: "css", value: "button[aria-label*='Accept']" },
+  { type: "css", value: "button[aria-label*='accepter']" },
+];
+
+const SHARE_BUTTON_LOCATORS: BrowserLocator[] = [
+  { type: "css", value: "button[aria-label*='Partager']" },
+  { type: "css", value: "button[aria-label*='Share']" },
+  { type: "xpath", value: "//button[contains(., 'Partager')]" },
+  { type: "xpath", value: "//button[contains(., 'Share')]" },
+];
+
+const EMBED_TAB_LOCATORS: BrowserLocator[] = [
+  { type: "xpath", value: "//*[contains(., 'Intégrer une carte')]" },
+  { type: "xpath", value: "//*[contains(., 'Embed a map')]" },
+  { type: "css", value: "[data-value='embedmap']" },
+];
+
+const EMBED_VALUE_LOCATORS: BrowserLocator[] = [
+  { type: "css", value: "input[value*='/maps/embed']" },
+  { type: "css", value: "textarea" },
+  { type: "css", value: "iframe[src*='/maps/embed']" },
+];
+
+export class SeleniumMapEmbedExtractor implements MapEmbedExtractor {
+  private readonly createSession: () => Promise<BrowserSession>;
+
+  constructor(private readonly options: SeleniumMapEmbedExtractorOptions) {
+    this.createSession =
+      options.createSession ??
+      (() => createSeleniumBrowserSession({ binaryPath: options.binaryPath, headless: options.headless }));
+  }
+
+  async extract(googleMapsUrl: string): Promise<string> {
+    const session = await this.createSession();
+
+    try {
+      await session.get(googleMapsUrl);
+      await this.clickOptional(session, CONSENT_BUTTON_LOCATORS);
+      await this.clickRequired(session, SHARE_BUTTON_LOCATORS);
+      await this.clickRequired(session, EMBED_TAB_LOCATORS);
+
+      const rawEmbedValue = await this.readEmbedValue(session);
+      return assertValidGoogleMapsEmbedUrl(extractEmbedUrl(rawEmbedValue));
+    } catch (error) {
+      throw await this.withDiagnostic(session, error);
+    } finally {
+      await session.quit();
+    }
+  }
+
+  private async clickOptional(session: BrowserSession, locators: BrowserLocator[]): Promise<void> {
+    try {
+      await this.clickRequired(session, locators);
+    } catch {
+      return;
+    }
+  }
+
+  private async clickRequired(session: BrowserSession, locators: BrowserLocator[]): Promise<void> {
+    const element = await session.waitForElement(locators, this.options.timeoutMs);
+    await element.click();
+  }
+
+  private async readEmbedValue(session: BrowserSession): Promise<string> {
+    const elements = await session.findElements(EMBED_VALUE_LOCATORS);
+
+    for (const element of elements) {
+      const value = (await element.getAttribute("value")) ?? "";
+      const src = (await element.getAttribute("src")) ?? "";
+      const text = await element.getText();
+      const rawValue = value || src || text;
+
+      if (rawValue.includes("/maps/embed") || rawValue.includes("output=embed")) {
+        return rawValue;
+      }
+    }
+
+    throw new Error("Iframe Google Maps embed introuvable.");
+  }
+
+  private async withDiagnostic(session: BrowserSession, error: unknown): Promise<Error> {
+    const message = error instanceof Error ? error.message : "Erreur Selenium inconnue.";
+    const [currentUrl, title, screenshot] = await Promise.all([
+      session.getCurrentUrl().catch(() => "unknown"),
+      session.getTitle().catch(() => "unknown"),
+      session.takeScreenshot().catch(() => ""),
+    ]);
+    const screenshotPath = screenshot
+      ? await saveScreenshot(this.options.screenshotDir, screenshot, { currentUrl, title, error: message })
+      : "capture indisponible";
+
+    return new Error(`Extraction Google Maps impossible: ${message}. Diagnostic: ${screenshotPath}`);
+  }
+}
+
+export function extractEmbedUrl(rawValue: string): string {
+  const iframeMatch = rawValue.match(/src=["'](?<src>https:\/\/[^"']+)["']/u);
+
+  if (iframeMatch?.groups?.["src"]) {
+    return iframeMatch.groups["src"];
+  }
+
+  return rawValue.trim();
 }

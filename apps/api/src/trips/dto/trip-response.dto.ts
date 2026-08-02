@@ -5,6 +5,9 @@ export class TripResponseDto {
   @ApiProperty({ example: "clx0000000000000000000000" })
   id!: string;
 
+  @ApiProperty({ example: "clx0000000000000000000001" })
+  ownerId!: string;
+
   @ApiProperty({ example: "Boucle des Cévennes" })
   name!: string;
 
