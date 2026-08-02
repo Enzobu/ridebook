@@ -1,8 +1,8 @@
 ---
-description: Rappelle et applique les règles transverses du projet FutureKawa (architecture, code, tests, doc, git, sécurité, observabilité, monorepo). Ces règles s'ajoutent à celles du sous-projet courant.
+description: Rappelle et applique les règles transverses du projet Ridebook (architecture, code, tests, doc, git, sécurité, observabilité, monorepo). Ces règles s'ajoutent à celles du sous-projet courant.
 ---
 
-Charge en contexte **toutes les règles transverses** du monorepo FutureKawa et applique-les à tout le travail de cette conversation, en plus des règles spécifiques du sous-projet courant.
+Charge en contexte **toutes les règles transverses** du monorepo Ridebook et applique-les à tout le travail de cette conversation, en plus des règles spécifiques du sous-projet courant.
 
 ## Instructions
 

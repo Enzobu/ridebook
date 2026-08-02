@@ -9,8 +9,8 @@ Entrée : $ARGUMENTS
 
 ## Workflow
 
-1. **Clarifier** avec l'utilisateur si le besoin est flou (type : feature / bug / refacto / chore / docs ; scope : pays / central / front / iot / contracts ; priorité ; section CDC concernée). Ne pas inventer — demander.
-2. **Lire** `consigne-structuree.md` pour identifier la section CDC pertinente.
+1. **Clarifier** avec l'utilisateur si le besoin est flou (type : feature / bug / refacto / chore / docs ; scope : front / api / worker / contracts ; priorité ; section CDC concernée). Ne pas inventer — demander.
+2. **Lire** `docs/cahier_des_charges_balades_moto.md` pour identifier la section CDC pertinente.
 3. **Rédiger** le ticket en respectant **strictement** le template ci-dessous.
 4. **Créer** l'issue via `gh issue create` :
    ```bash
@@ -27,7 +27,7 @@ Entrée : $ARGUMENTS
 Pourquoi ce ticket existe. Lien CDC si applicable (§III.X). Irritant ou besoin métier en 2-3 phrases.
 
 ## User story
-En tant que <rôle FutureKawa>, je veux <action>, afin de <bénéfice métier>.
+En tant que <visiteur | utilisateur | administrateur>, je veux <action>, afin de <bénéfice métier>.
 
 ## Scope
 **Inclus :**
@@ -43,7 +43,7 @@ Formulés comme des assertions **testables** et **vérifiables** :
 - [ ] L'UI affiche <élément> dans <état>.
 
 ## Impact technique
-- Sous-projets touchés : `apps/backend-pays`, `apps/frontend-web`, `packages/contracts`…
+- Sous-projets touchés : `apps/api`, `apps/frontend`, `apps/maps-worker`, `packages/contracts`…
 - ADR à créer ou référencer : <none | ADR-NNNN>
 - Points d'attention : migrations DB, breaking changes de contrats, sécurité…
 
@@ -70,7 +70,7 @@ Formulés comme des assertions **testables** et **vérifiables** :
 Toujours deux labels : `type` + `scope`.
 
 - Types : `feat`, `fix`, `refacto`, `chore`, `docs`, `test`, `ci`
-- Scopes : `pays`, `central`, `front`, `iot`, `contracts`, `docker`, `ci`, `docs`
+- Scopes : `front`, `api`, `worker`, `contracts`, `docker`, `ci`, `docs`
 
 Si les labels n'existent pas sur le repo, proposer de les créer via `gh label create`.
 
@@ -78,5 +78,5 @@ Si les labels n'existent pas sur le repo, proposer de les créer via `gh label c
 
 - **Aucun champ vide ou générique** (pas de "TBD", pas de "à définir"). Si une section est vide, la retirer.
 - **Critères d'acceptance = conditions testables**. Pas de "ça doit bien marcher".
-- **Titre en impératif**, préfixé du type et du scope : `feat(pays): add MQTT subscriber for DHT measurements`.
+- **Titre en impératif**, préfixé du type et du scope : `feat(api): add invitation links`.
 - **Pas d'estimation numérique** arbitraire. Utiliser les labels de taille (`size/XS/S/M/L/XL`) si créés, sinon rien.

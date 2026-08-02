@@ -1,9 +1,9 @@
 ---
 name: rules
-description: Rappelle et applique les règles transverses du projet FutureKawa (architecture, code, tests, doc, git, sécurité, observabilité, monorepo, parité IA). À déclencher avant toute session de dev ou sur demande explicite ("charge les règles", "applique /rules").
+description: Rappelle et applique les règles transverses du projet Ridebook (architecture, code, tests, doc, git, sécurité, observabilité, monorepo, parité IA). À déclencher avant toute session de dev ou sur demande explicite ("charge les règles", "applique /rules").
 ---
 
-Charge en contexte **toutes les règles transverses** du monorepo FutureKawa et applique-les à tout le travail de cette conversation, en plus des règles spécifiques du sous-projet courant.
+Charge en contexte **toutes les règles transverses** du monorepo Ridebook et applique-les à tout le travail de cette conversation, en plus des règles spécifiques du sous-projet courant.
 
 ## Instructions
 

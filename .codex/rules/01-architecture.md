@@ -2,25 +2,25 @@
 
 ## Clean architecture
 
-Séparation stricte entre **domain**, **application**, **infrastructure**, **interface**. Les couches internes ne connaissent **jamais** les couches externes.
+Séparation stricte entre **domain**, **application**, **infrastructure**, **interface**.
 
-## Dependency rule
+- Le **domain** n'importe ni Prisma, ni HTTP, ni React, ni Selenium.
+- L'**application** dépend du domain et parle à des ports.
+- L'**infrastructure** implémente les ports : Prisma, mailer, Selenium, filesystem.
+- L'**interface** expose les contrôleurs REST, pages React, CLI ou processus worker.
 
-Les dépendances pointent **toujours vers l'intérieur**. Concrètement :
+## Frontières du monorepo
 
-- Le **domain** n'importe ni Prisma, ni HTTP, ni MQTT, ni React.
-- L'**application** dépend du domain, pas de l'infra — elle parle à des **ports** (interfaces déclarées dans `domain/`).
-- L'**infrastructure** implémente les ports (ex. `PrismaLotRepository implements LotRepository`).
-- L'**interface** (contrôleurs REST, pages React) appelle uniquement l'application et transforme via DTOs.
+`apps/<a>` ne peut pas importer `apps/<b>`.
 
-## Séparation des responsabilités (SRP)
+Les échanges se font par contrat explicite :
 
-Une classe / un module / un fichier = **une seule raison de changer**.
+- frontend → API REST ;
+- maps-worker → base de données et ports applicatifs dédiés ;
+- types partagés → `@ridebook/contracts`.
 
-## Aucun import cross-app
+## Types partagés
 
-`apps/<a>` ne peut pas importer `apps/<b>`. Les échanges inter-apps se font via **HTTP** (siège ↔ pays) ou **MQTT** (IoT → pays), **jamais** via import TypeScript.
+Les types publics, enums et constantes communes vivent dans `@ridebook/contracts`.
 
-## Types partagés exclusivement via `@futurekawa/contracts`
-
-Ne jamais redéfinir localement un type déjà présent dans `contracts`. Si un type manque → l'ajouter dans `contracts` + rebuild.
+Ne jamais redéfinir localement un type déjà présent dans `contracts`. Si un type manque, l'ajouter au package puis rebuild.

@@ -31,12 +31,7 @@
       "Bash(git log:*)",
       "Bash(git branch)",
       "Bash(git branch:*)",
-      "Bash(git show:*)",
-      "Bash(pio run)",
-      "Bash(pio run:*)",
-      "Bash(pio device:*)",
-      "Bash(pio test)",
-      "Bash(pio test:*)"
+      "Bash(git show:*)"
     ],
     "ask": [
       "Bash(git push*)",

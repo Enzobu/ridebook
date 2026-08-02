@@ -21,7 +21,7 @@ Refactor **sans modifier le comportement observable**.
 6. Vérifier que **le comportement observable n'a pas changé** :
    - mêmes endpoints, mêmes status codes, mêmes shapes de réponses
    - mêmes écrans, mêmes interactions utilisateur
-   - mêmes contrats côté `@futurekawa/contracts` (sauf si le ticket l'autorise explicitement)
+   - mêmes contrats côté `@ridebook/contracts` (sauf si le ticket l'autorise explicitement)
 7. **Mettre à jour** `docs/features/<feature>.md` (section implémentation, `updated`) pour refléter les nouveaux chemins.
 8. Bruno et Swagger **ne doivent pas changer** (sinon c'est plus un refacto).
 9. **Proposer la skill `commit`**.
@@ -31,7 +31,7 @@ Refactor **sans modifier le comportement observable**.
 - **Pas de nouvelle feature, pas de fix** mélangés. Si tu en trouves → ticket séparé.
 - **Commits atomiques** : un commit = une transformation compréhensible.
 - **Commit message** : `refactor(scope): <description> (#<issue>)`.
-- **Couverture minimale** : si le refacto touche une règle métier critique (alertes, FIFO, seuils), la couverture doit être > 80 % sur cette zone avant de commencer.
+- **Couverture minimale** : si le refacto touche une règle métier critique (auth, permissions, queue de jobs), la couverture doit être > 80 % sur cette zone avant de commencer.
 
 ## Anti-patterns à refuser
 

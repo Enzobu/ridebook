@@ -1,13 +1,13 @@
 ---
 name: check-cdc
-description: Audit de conformité de la solution au Cahier Des Charges FutureKawa. À déclencher quand l'utilisateur demande un audit CDC, un bilan de conformité, ou une revue avant soutenance. Accepte une section optionnelle en argument (ex. 'III.2' pour cibler l'IoT). Délègue au subagent cdc-reviewer.
+description: Audit de conformité de la solution au Cahier Des Charges Ridebook. À déclencher quand l'utilisateur demande un audit CDC, un bilan de conformité, ou une revue avant soutenance. Accepte une section optionnelle en argument (ex. '6' pour cibler la récupération asynchrone). Délègue au subagent cdc-reviewer.
 ---
 
-Lance un audit de conformité au cahier des charges FutureKawa via le subagent **cdc-reviewer** (`.codex/agents/cdc-reviewer.toml`).
+Lance un audit de conformité au cahier des charges Ridebook via le subagent **cdc-reviewer** (`.codex/agents/cdc-reviewer.toml`).
 
 ## Comportement attendu
 
-1. Relis `consigne-structuree.md` (CDC).
+1. Relis `docs/cahier_des_charges_balades_moto.md` (CDC).
 2. Cartographie les exigences (✅ fait / 🟡 partiel / ❌ manquant / ⏭️ hors scope).
 3. Pour chaque exigence couverte, cite le fichier/chemin.
 4. Pour chaque exigence partielle/manquante, propose la plus petite action concrète pour avancer.
