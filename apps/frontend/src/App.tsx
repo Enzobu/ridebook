@@ -566,7 +566,13 @@ function LoginScreen({
   const submit = async (event: FormEvent): Promise<void> => {
     event.preventDefault();
     try {
-      onSuccess((await login(email, password)).user);
+      const session = await login(email, password);
+
+      if (!session.user) {
+        throw new Error("Missing authenticated user.");
+      }
+
+      onSuccess(session.user);
     } catch {
       onToast("Identifiants invalides.", "error");
     }
@@ -749,7 +755,15 @@ function MapPanel({
   trip: TripDto;
 }): ReactElement {
   if (trip.mapEmbedUrl && trip.mapStatus === "SUCCESS") {
-    return <iframe className="map-frame" loading="lazy" src={trip.mapEmbedUrl} title={`Carte de ${trip.name}`} />;
+    return (
+        <iframe
+          className="map-frame"
+          referrerPolicy="strict-origin-when-cross-origin"
+          loading="lazy"
+          src={trip.mapEmbedUrl}
+          title={`Carte de ${trip.name}`}
+        />
+    );
   }
 
   return (

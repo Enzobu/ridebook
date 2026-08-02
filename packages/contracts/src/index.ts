@@ -18,7 +18,7 @@ export interface UserDto {
 }
 
 export interface AuthSessionDto {
-  user: UserDto;
+  user: UserDto | null;
 }
 
 export interface InvitationDto {

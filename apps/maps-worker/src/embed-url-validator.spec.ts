@@ -20,4 +20,10 @@ describe("assertValidGoogleMapsEmbedUrl", () => {
       "URL embed Google Maps non HTTPS refusée.",
     );
   });
+
+  it("should reject regular Google Maps routes with output embed", () => {
+    expect(() => assertValidGoogleMapsEmbedUrl("https://www.google.com/maps/dir/Paris/Lyon?output=embed")).toThrow(
+      "URL Google Maps embed non reconnue.",
+    );
+  });
 });

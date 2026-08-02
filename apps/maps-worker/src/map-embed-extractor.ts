@@ -32,13 +32,22 @@ const CONSENT_BUTTON_LOCATORS: BrowserLocator[] = [
 const SHARE_BUTTON_LOCATORS: BrowserLocator[] = [
   { type: "css", value: "button[aria-label*='Partager']" },
   { type: "css", value: "button[aria-label*='Share']" },
+  { type: "xpath", value: "//*[@role='button' and contains(@aria-label, 'Partager')]" },
+  { type: "xpath", value: "//*[@role='button' and contains(@aria-label, 'Share')]" },
   { type: "xpath", value: "//button[contains(., 'Partager')]" },
   { type: "xpath", value: "//button[contains(., 'Share')]" },
 ];
 
+const ROUTE_DETAILS_LOCATORS: BrowserLocator[] = [
+  { type: "xpath", value: "//*[self::button or self::a][contains(., 'Détails')]" },
+  { type: "xpath", value: "//*[self::button or self::a][contains(., 'Details')]" },
+];
+
 const EMBED_TAB_LOCATORS: BrowserLocator[] = [
-  { type: "xpath", value: "//*[contains(., 'Intégrer une carte')]" },
-  { type: "xpath", value: "//*[contains(., 'Embed a map')]" },
+  { type: "xpath", value: "//*[@role='tab' and contains(., 'Intégrer une carte')]" },
+  { type: "xpath", value: "//*[@role='tab' and contains(., 'Embed a map')]" },
+  { type: "xpath", value: "//*[self::button or self::a][contains(., 'Intégrer une carte')]" },
+  { type: "xpath", value: "//*[self::button or self::a][contains(., 'Embed a map')]" },
   { type: "css", value: "[data-value='embedmap']" },
 ];
 
@@ -63,6 +72,7 @@ export class SeleniumMapEmbedExtractor implements MapEmbedExtractor {
     try {
       await session.get(googleMapsUrl);
       await this.clickOptional(session, CONSENT_BUTTON_LOCATORS);
+      await this.clickOptional(session, ROUTE_DETAILS_LOCATORS);
       await this.clickRequired(session, SHARE_BUTTON_LOCATORS);
       await this.clickRequired(session, EMBED_TAB_LOCATORS);
 
@@ -97,7 +107,7 @@ export class SeleniumMapEmbedExtractor implements MapEmbedExtractor {
       const text = await element.getText();
       const rawValue = value || src || text;
 
-      if (rawValue.includes("/maps/embed") || rawValue.includes("output=embed")) {
+      if (rawValue.includes("/maps/embed")) {
         return rawValue;
       }
     }

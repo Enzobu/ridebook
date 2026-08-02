@@ -8,9 +8,8 @@ import {
 } from "@nestjs/swagger";
 import type { Request, Response } from "express";
 
-import { REFRESH_TOKEN_COOKIE } from "./auth.constants.js";
+import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE } from "./auth.constants.js";
 import { AuthService } from "./auth.service.js";
-import { AuthenticatedRequest } from "./auth.types.js";
 import { AuthCookieService } from "./cookie.service.js";
 import { AuthSessionResponseDto } from "./dto/auth-response.dto.js";
 import { LoginDto } from "./dto/login.dto.js";
@@ -79,13 +78,14 @@ export class AuthController {
   }
 
   @Get("me")
-  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: "Lire l'utilisateur courant" })
   @ApiOkResponse({ type: AuthSessionResponseDto })
-  async me(@Req() request: AuthenticatedRequest): Promise<AuthSessionResponseDto> {
-    const user = await this.authService.getAuthenticatedUser(request.user.sub);
+  async me(@Req() request: Request): Promise<AuthSessionResponseDto> {
+    const user = await this.authService.getUserFromAccessToken(
+      request.cookies?.[ACCESS_TOKEN_COOKIE] as string | undefined,
+    );
 
-    return { user: toUserResponseDto(user) };
+    return { user: user ? toUserResponseDto(user) : null };
   }
 
   @Post("register")

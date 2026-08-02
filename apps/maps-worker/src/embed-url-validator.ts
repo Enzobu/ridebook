@@ -36,9 +36,5 @@ function isAllowedGoogleHost(hostname: string): boolean {
 }
 
 function isMapsEmbedPath(parsed: URL): boolean {
-  if (parsed.pathname.startsWith("/maps/embed")) {
-    return true;
-  }
-
-  return parsed.pathname.startsWith("/maps") && parsed.searchParams.get("output") === "embed";
+  return parsed.pathname.startsWith("/maps/embed");
 }

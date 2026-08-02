@@ -19,6 +19,6 @@ export class UserResponseDto {
 }
 
 export class AuthSessionResponseDto {
-  @ApiProperty({ type: UserResponseDto })
-  user!: UserResponseDto;
+  @ApiProperty({ nullable: true, type: UserResponseDto })
+  user!: UserResponseDto | null;
 }
