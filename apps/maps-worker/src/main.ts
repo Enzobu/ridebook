@@ -27,7 +27,9 @@ async function bootstrap(): Promise<void> {
   );
 
   setInterval(() => {
-    void tick(repository, processor, notifier, config.stalledJobTimeoutMinutes);
+    void tick(repository, processor, notifier, config.stalledJobTimeoutMinutes).catch((error: unknown) => {
+      process.stderr.write(JSON.stringify({ event: "worker.tick.failed", error: serializeError(error) }) + "\n");
+    });
   }, config.pollIntervalMs);
 }
 
@@ -83,4 +85,12 @@ function createFailureNotifier(config: ReturnType<typeof loadWorkerConfig>): Fai
     to: config.adminNotificationEmail,
     user: config.smtpUser,
   });
+}
+
+function serializeError(error: unknown): { message: string; name: string } {
+  if (error instanceof Error) {
+    return { message: error.message, name: error.name };
+  }
+
+  return { message: String(error), name: "UnknownError" };
 }
