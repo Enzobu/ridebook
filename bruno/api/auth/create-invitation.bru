@@ -1,0 +1,24 @@
+meta {
+  name: Create invitation
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{apiUrl}}/api/v1/invitations
+  body: json
+}
+
+body:json {
+  {
+    "email": "user@example.com"
+  }
+}
+
+docs {
+  Crée un lien d'invitation. Route réservée aux administrateurs.
+}
+
+tests {
+  expect([201, 401, 403]).to.include(res.status);
+}

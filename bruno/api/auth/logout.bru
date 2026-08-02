@@ -1,0 +1,18 @@
+meta {
+  name: Logout
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{apiUrl}}/api/v1/auth/logout
+  body: none
+}
+
+docs {
+  Révoque le refresh token courant et efface les cookies de session.
+}
+
+tests {
+  expect(res.status).to.equal(204);
+}

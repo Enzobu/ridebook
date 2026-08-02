@@ -1,8 +1,12 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
+import { APP_GUARD } from "@nestjs/core";
+import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { LoggerModule } from "nestjs-pino";
 
 import { AppController } from "./app.controller.js";
+import { AuthModule } from "./auth/auth.module.js";
+import { TripsModule } from "./trips/trips.module.js";
 
 @Module({
   imports: [
@@ -13,7 +17,21 @@ import { AppController } from "./app.controller.js";
         redact: ["req.headers.cookie", "req.headers.authorization"],
       },
     }),
+    ThrottlerModule.forRoot([
+      {
+        limit: 100,
+        ttl: 60_000,
+      },
+    ]),
+    AuthModule,
+    TripsModule,
   ],
   controllers: [AppController],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

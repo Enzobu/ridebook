@@ -3,6 +3,7 @@ import "reflect-metadata";
 import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
+import cookieParser from "cookie-parser";
 
 import { AppModule } from "./app.module.js";
 
@@ -10,6 +11,7 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
   const corsOrigin = process.env["CORS_ORIGIN"] ?? "http://localhost:3000";
 
+  app.use(cookieParser());
   app.enableCors({
     credentials: true,
     origin: corsOrigin.split(",").map((origin) => origin.trim()),

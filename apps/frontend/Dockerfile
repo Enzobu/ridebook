@@ -2,6 +2,8 @@ FROM node:24-bookworm-slim AS build
 
 WORKDIR /app
 RUN corepack enable
+ARG VITE_API_URL
+ENV VITE_API_URL=$VITE_API_URL
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
 COPY apps/api/package.json apps/api/package.json
