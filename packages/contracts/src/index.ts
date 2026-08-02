@@ -30,6 +30,7 @@ export interface InvitationDto {
 
 export interface TripDto {
   id: string;
+  ownerId: string;
   name: string;
   description: string | null;
   googleMapsUrl: string;
@@ -37,6 +38,14 @@ export interface TripDto {
   distanceKm: number | null;
   durationMinutes: number | null;
   mapStatus: MapStatus;
+  mapLastError: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface TripListDto {
+  items: TripDto[];
+  limit: number;
+  page: number;
+  total: number;
 }

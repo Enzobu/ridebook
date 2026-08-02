@@ -13,9 +13,12 @@ import {
 } from "@nestjs/common";
 import {
   ApiCreatedResponse,
+  ApiConflictResponse,
+  ApiForbiddenResponse,
   ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiUnauthorizedResponse,
   ApiTags,
 } from "@nestjs/swagger";
 
@@ -76,5 +79,19 @@ export class TripsController {
   @ApiNoContentResponse()
   delete(@Param("id") id: string, @Req() request: AuthenticatedRequest): Promise<void> {
     return this.tripsService.delete(id, request.user);
+  }
+
+  @Post(":id/map/retry")
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: "Relancer la récupération de carte d'une balade" })
+  @ApiOkResponse({ type: TripResponseDto })
+  @ApiUnauthorizedResponse({ description: "Authentification requise." })
+  @ApiForbiddenResponse({ description: "Seul le propriétaire ou un admin peut relancer." })
+  @ApiConflictResponse({ description: "Job actif existant ou carte pas en échec." })
+  retryMap(
+    @Param("id") id: string,
+    @Req() request: AuthenticatedRequest,
+  ): Promise<TripResponseDto> {
+    return this.tripsService.retryMap(id, request.user);
   }
 }

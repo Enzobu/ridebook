@@ -18,3 +18,5 @@ Le worker utilise `WORKER_EXTRACTOR_MODE` :
 - `fake` : renvoie `WORKER_FAKE_MAP_EMBED_URL` pour les tests et le développement sans dépendance Google.
 
 Les captures Selenium sont stockées dans `SELENIUM_SCREENSHOT_DIR`, mappé depuis l'hôte via `SELENIUM_SCREENSHOT_VOLUME_PATH`. Chaque échec écrit un PNG et un JSON contenant URL courante, titre de page et erreur. Le nettoyage peut être fait côté serveur par rétention classique, par exemple supprimer les fichiers de plus de 30 jours dans le chemin configuré.
+
+Sur échec définitif, le worker envoie un email SMTP à `ADMIN_NOTIFICATION_EMAIL` si `SMTP_USER` et `SMTP_PASSWORD` sont configurés. Le job marque `failureNotifiedAt` avant l'envoi pour éviter les notifications multiples sur le même échec.

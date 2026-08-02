@@ -1,5 +1,6 @@
 import { MapEmbedJob, MapEmbedJobStatus, MapStatus, PrismaClient } from "@prisma/client";
 
+import { MapFailureNotification } from "./failure-notifier.js";
 import { getNextAttemptDelayMs, shouldFailPermanently } from "./retry-policy.js";
 
 export class JobRepository {
@@ -67,28 +68,52 @@ export class JobRepository {
     ]);
   }
 
-  async markFailure(job: MapEmbedJob, error: Error, now = new Date()): Promise<void> {
+  async markFailure(job: MapEmbedJob, error: Error, now = new Date()): Promise<MapFailureNotification | null> {
     const lastError = error.message;
 
     if (shouldFailPermanently(job.attempts, job.maxAttempts)) {
-      await this.prisma.$transaction([
-        this.prisma.trip.update({
+      const notificationClaim = await this.prisma.$transaction(async (transaction) => {
+        await transaction.trip.update({
           data: {
             mapLastError: lastError,
             mapStatus: MapStatus.FAILED,
           },
           where: { id: job.tripId },
-        }),
-        this.prisma.mapEmbedJob.update({
+        });
+        await transaction.mapEmbedJob.update({
           data: {
             failedAt: now,
             lastError,
             status: MapEmbedJobStatus.FAILED,
           },
           where: { id: job.id },
-        }),
-      ]);
-      return;
+        });
+
+        return transaction.mapEmbedJob.updateMany({
+          data: { failureNotifiedAt: now },
+          where: { failureNotifiedAt: null, id: job.id },
+        });
+      });
+
+      if (notificationClaim.count !== 1) {
+        return null;
+      }
+
+      const failedJob = await this.prisma.mapEmbedJob.findUniqueOrThrow({
+        include: { trip: true },
+        where: { id: job.id },
+      });
+
+      return {
+        attempts: failedJob.attempts,
+        failedAt: now,
+        googleMapsUrl: failedJob.trip.googleMapsUrl,
+        jobId: failedJob.id,
+        lastError,
+        maxAttempts: failedJob.maxAttempts,
+        tripId: failedJob.tripId,
+        tripName: failedJob.trip.name,
+      };
     }
 
     await this.prisma.mapEmbedJob.update({
@@ -99,9 +124,11 @@ export class JobRepository {
       },
       where: { id: job.id },
     });
+
+    return null;
   }
 
-  async recoverStalledJobs(timeoutMinutes: number, now = new Date()): Promise<number> {
+  async recoverStalledJobs(timeoutMinutes: number, now = new Date()): Promise<MapFailureNotification[]> {
     const stalledBefore = new Date(now.getTime() - timeoutMinutes * 60_000);
     const stalledJobs = await this.prisma.mapEmbedJob.findMany({
       where: {
@@ -110,12 +137,12 @@ export class JobRepository {
       },
     });
 
-    await Promise.all(
+    const notifications = await Promise.all(
       stalledJobs.map((job) =>
         this.markFailure(job, new Error("Traitement interrompu ou bloqué."), now),
       ),
     );
 
-    return stalledJobs.length;
+    return notifications.filter((notification): notification is MapFailureNotification => notification !== null);
   }
 }
