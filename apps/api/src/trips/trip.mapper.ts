@@ -14,6 +14,7 @@ export function toTripResponseDto(trip: Trip): TripResponseDto {
     mapLastError: trip.mapLastError,
     mapStatus: trip.mapStatus,
     name: trip.name,
+    ownerId: trip.ownerId,
     updatedAt: trip.updatedAt.toISOString(),
   };
 }

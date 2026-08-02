@@ -1,7 +1,10 @@
 FROM node:24-bookworm-slim AS build
 
 WORKDIR /app
-RUN corepack enable
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl \
+  && rm -rf /var/lib/apt/lists/* \
+  && corepack enable
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
 COPY apps/api/package.json apps/api/package.json
@@ -21,15 +24,13 @@ FROM node:24-bookworm-slim AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends chromium \
+  && apt-get install -y --no-install-recommends chromium chromium-driver openssl \
   && rm -rf /var/lib/apt/lists/* \
-  && corepack enable \
   && useradd --create-home --shell /usr/sbin/nologin worker
 
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY apps/maps-worker/package.json apps/maps-worker/package.json
-RUN pnpm install --prod --filter maps-worker --frozen-lockfile
-
+COPY --from=build /app/node_modules node_modules
+COPY --from=build /app/apps/api/prisma apps/api/prisma
+COPY --from=build /app/apps/maps-worker/package.json apps/maps-worker/package.json
 COPY --from=build /app/apps/maps-worker/dist apps/maps-worker/dist
 
 RUN mkdir -p /storage/selenium-errors \
