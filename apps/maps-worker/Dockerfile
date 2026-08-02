@@ -30,6 +30,7 @@ RUN apt-get update \
 
 COPY --from=build /app/node_modules node_modules
 COPY --from=build /app/apps/api/prisma apps/api/prisma
+COPY --from=build /app/apps/maps-worker/node_modules apps/maps-worker/node_modules
 COPY --from=build /app/apps/maps-worker/package.json apps/maps-worker/package.json
 COPY --from=build /app/apps/maps-worker/dist apps/maps-worker/dist
 
