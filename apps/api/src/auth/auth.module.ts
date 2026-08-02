@@ -12,6 +12,7 @@ import { RolesGuard } from "./roles.guard.js";
 
 @Module({
   controllers: [AuthController, InvitationsController],
+  exports: [JwtModule, JwtAuthGuard, RolesGuard],
   imports: [JwtModule.register({}), PrismaModule],
   providers: [AuthCookieService, AuthService, InvitationsService, JwtAuthGuard, RolesGuard],
 })
