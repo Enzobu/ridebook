@@ -1,4 +1,4 @@
-import type { MapStatus, TripDto, TripListDto } from "@ridebook/contracts";
+import type { AuthSessionDto, InvitationDto, MapStatus, TripDto, TripListDto } from "@ridebook/contracts";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
 
@@ -26,22 +26,86 @@ export async function listTrips(params: ListTripsParams, signal?: AbortSignal): 
     query.set("status", params.status);
   }
 
-  return fetchJson<TripListDto>(`/api/v1/trips?${query.toString()}`, signal);
+  return requestJson<TripListDto>(`/api/v1/trips?${query.toString()}`, signal);
 }
 
 export async function getTrip(id: string, signal?: AbortSignal): Promise<TripDto> {
-  return fetchJson<TripDto>(`/api/v1/trips/${id}`, signal);
+  return requestJson<TripDto>(`/api/v1/trips/${id}`, signal);
 }
 
-async function fetchJson<T>(path: string, signal?: AbortSignal): Promise<T> {
+export interface TripFormPayload {
+  description?: string;
+  distanceKm?: number;
+  durationMinutes?: number;
+  googleMapsUrl: string;
+  name: string;
+}
+
+export async function createTrip(payload: TripFormPayload): Promise<TripDto> {
+  return requestJson<TripDto>("/api/v1/trips", undefined, {
+    body: JSON.stringify(payload),
+    method: "POST",
+  });
+}
+
+export async function updateTrip(id: string, payload: TripFormPayload): Promise<TripDto> {
+  return requestJson<TripDto>(`/api/v1/trips/${id}`, undefined, {
+    body: JSON.stringify(payload),
+    method: "PATCH",
+  });
+}
+
+export async function deleteTrip(id: string): Promise<void> {
+  await requestJson<void>(`/api/v1/trips/${id}`, undefined, { method: "DELETE" });
+}
+
+export async function retryTripMap(id: string): Promise<TripDto> {
+  return requestJson<TripDto>(`/api/v1/trips/${id}/map/retry`, undefined, { method: "POST" });
+}
+
+export async function getSession(): Promise<AuthSessionDto> {
+  return requestJson<AuthSessionDto>("/api/v1/auth/me");
+}
+
+export async function login(email: string, password: string): Promise<AuthSessionDto> {
+  return requestJson<AuthSessionDto>("/api/v1/auth/login", undefined, {
+    body: JSON.stringify({ email, password }),
+    method: "POST",
+  });
+}
+
+export async function logout(): Promise<void> {
+  await requestJson<void>("/api/v1/auth/logout", undefined, { method: "POST" });
+}
+
+export async function registerWithInvitation(email: string, password: string, token: string): Promise<void> {
+  await requestJson<void>("/api/v1/auth/register", undefined, {
+    body: JSON.stringify({ email, password, token }),
+    method: "POST",
+  });
+}
+
+export async function createInvitation(email?: string): Promise<InvitationDto> {
+  return requestJson<InvitationDto>("/api/v1/invitations", undefined, {
+    body: JSON.stringify(email ? { email } : {}),
+    method: "POST",
+  });
+}
+
+async function requestJson<T>(path: string, signal?: AbortSignal, init: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     credentials: "include",
-    headers: { Accept: "application/json" },
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    ...init,
     signal,
   });
 
   if (!response.ok) {
     throw new Error("Impossible de charger les balades.");
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
   }
 
   return response.json() as Promise<T>;

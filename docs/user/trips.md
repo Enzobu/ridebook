@@ -14,3 +14,7 @@ La recherche filtre les balades par texte. Les menus permettent de filtrer par s
 Depuis une carte, le bouton de détail ouvre la fiche complète. Si la carte Google Maps a été récupérée, elle est affichée directement. Sinon, Ridebook affiche le statut de récupération.
 
 Le bouton `Ouvrir dans Google Maps` ouvre le trajet original dans un nouvel onglet.
+
+Après connexion, le bouton `Nouvelle balade` permet d'ajouter un trajet avec son lien Google Maps, une distance et une durée. Le détail affiche ensuite le statut de récupération de carte et se met à jour automatiquement.
+
+Le propriétaire d'une balade peut la modifier ou la supprimer. Si la récupération de carte échoue, le bouton `Réessayer` relance le traitement.
