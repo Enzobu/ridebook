@@ -11,7 +11,6 @@ post {
 
 body:json {
   {
-    "email": "user@example.com",
     "password": "RidebookTest1!",
     "token": "invitation-token"
   }
@@ -19,6 +18,7 @@ body:json {
 
 docs {
   Crée un compte utilisateur depuis une invitation valide, non expirée et non utilisée.
+  L'email du compte est celui associé à l'invitation et n'est pas fourni par le client.
   Le mot de passe doit faire au moins 12 caractères et contenir une majuscule, une minuscule, un chiffre et un caractère spécial.
 }
 
