@@ -1,5 +1,19 @@
 import { z } from "zod";
 
+const envBoolean = z.preprocess((value) => {
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true") {
+      return true;
+    }
+    if (normalized === "false") {
+      return false;
+    }
+  }
+
+  return value;
+}, z.boolean());
+
 const workerConfigSchema = z.object({
   adminNotificationEmail: z.string().email(),
   databaseUrl: z.string().min(1),
@@ -7,14 +21,14 @@ const workerConfigSchema = z.object({
   pollIntervalMs: z.coerce.number().int().positive(),
   screenshotDir: z.string().min(1),
   seleniumBinaryPath: z.string().min(1),
-  seleniumHeadless: z.coerce.boolean(),
+  seleniumHeadless: envBoolean,
   seleniumMaxAttempts: z.coerce.number().int().positive(),
   seleniumTimeoutMs: z.coerce.number().int().positive(),
   smtpFrom: z.string().min(1),
   smtpHost: z.string().min(1),
   smtpPassword: z.string(),
   smtpPort: z.coerce.number().int().positive(),
-  smtpSecure: z.coerce.boolean(),
+  smtpSecure: envBoolean,
   smtpUser: z.string(),
   stalledJobTimeoutMinutes: z.coerce.number().int().positive(),
   fakeMapEmbedUrl: z.string().url(),
