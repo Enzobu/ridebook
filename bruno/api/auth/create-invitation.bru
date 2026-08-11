@@ -16,9 +16,9 @@ body:json {
 }
 
 docs {
-  Crée un lien d'invitation. Route réservée aux administrateurs.
+  Crée une invitation liée à un email et envoie immédiatement le lien d'inscription à ce destinataire. Route réservée aux administrateurs.
 }
 
 tests {
-  expect([201, 401, 403]).to.include(res.status);
+  expect([201, 400, 401, 403, 409, 503]).to.include(res.status);
 }

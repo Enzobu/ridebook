@@ -23,9 +23,14 @@ export interface AuthSessionDto {
 
 export interface InvitationDto {
   id: string;
+  email: string;
   invitationUrl: string;
   expiresAt: string;
   createdAt: string;
+}
+
+export interface InvitationRegistrationDto {
+  email: string;
 }
 
 export interface TripDto {

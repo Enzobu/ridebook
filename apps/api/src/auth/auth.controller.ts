@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Post, Req, Res, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, Post, Query, Req, Res, UseGuards } from "@nestjs/common";
 import {
   ApiCreatedResponse,
   ApiOkResponse,
@@ -12,8 +12,10 @@ import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE } from "./auth.constants.js";
 import { AuthService } from "./auth.service.js";
 import { AuthCookieService } from "./cookie.service.js";
 import { AuthSessionResponseDto } from "./dto/auth-response.dto.js";
+import { InvitationRegistrationDto } from "./dto/invitation-response.dto.js";
 import { LoginDto } from "./dto/login.dto.js";
 import { RegisterWithInvitationDto } from "./dto/register-with-invitation.dto.js";
+import { ResolveInvitationDto } from "./dto/resolve-invitation.dto.js";
 import { InvitationsService } from "./invitations.service.js";
 import { JwtAuthGuard } from "./jwt-auth.guard.js";
 import { toUserResponseDto } from "./user.mapper.js";
@@ -88,10 +90,17 @@ export class AuthController {
     return { user: user ? toUserResponseDto(user) : null };
   }
 
+  @Get("invitation")
+  @ApiOperation({ summary: "Résoudre une invitation pour préremplir l'inscription" })
+  @ApiOkResponse({ type: InvitationRegistrationDto })
+  async resolveInvitation(@Query() dto: ResolveInvitationDto): Promise<InvitationRegistrationDto> {
+    return this.invitationsService.resolveInvitation(dto.token);
+  }
+
   @Post("register")
   @ApiOperation({ summary: "Créer un compte depuis une invitation" })
   @ApiCreatedResponse({ description: "Compte créé" })
   async registerWithInvitation(@Body() dto: RegisterWithInvitationDto): Promise<void> {
-    await this.invitationsService.acceptInvitation(dto.token, dto.email, dto.password);
+    await this.invitationsService.acceptInvitation(dto.token, dto.password);
   }
 }

@@ -22,13 +22,13 @@ export class InvitationsController {
 
   @Post()
   @Roles("ADMIN")
-  @ApiOperation({ summary: "Créer un lien d'invitation" })
+  @ApiOperation({ summary: "Créer et envoyer une invitation par email" })
   @ApiCreatedResponse({ type: InvitationResponseDto })
   @ApiForbiddenResponse({ description: "Réservé aux administrateurs" })
   async createInvitation(
-    @Body() _dto: CreateInvitationDto,
+    @Body() dto: CreateInvitationDto,
     @Req() request: AuthenticatedRequest,
   ): Promise<InvitationResponseDto> {
-    return this.invitationsService.createInvitation(request.user.sub);
+    return this.invitationsService.createInvitation(request.user.sub, dto.email);
   }
 }
