@@ -1,4 +1,11 @@
-import type { AuthSessionDto, InvitationDto, MapStatus, TripDto, TripListDto } from "@ridebook/contracts";
+import type {
+  AuthSessionDto,
+  InvitationDto,
+  InvitationRegistrationDto,
+  MapStatus,
+  TripDto,
+  TripListDto,
+} from "@ridebook/contracts";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
 
@@ -92,21 +99,26 @@ export async function logout(): Promise<void> {
   await requestJson<void>("/api/v1/auth/logout", undefined, { method: "POST" });
 }
 
-export async function registerWithInvitation(email: string, password: string, token: string): Promise<void> {
+export async function resolveInvitation(token: string, signal?: AbortSignal): Promise<InvitationRegistrationDto> {
+  const query = new URLSearchParams({ token });
+  return requestJson<InvitationRegistrationDto>(`/api/v1/auth/invitation?${query.toString()}`, signal);
+}
+
+export async function registerWithInvitation(password: string, token: string): Promise<void> {
   const passwordError = getPasswordPolicyError(password);
   if (passwordError) {
     throw new ApiError(0, passwordError);
   }
 
   await requestJson<void>("/api/v1/auth/register", undefined, {
-    body: JSON.stringify({ email, password, token }),
+    body: JSON.stringify({ password, token }),
     method: "POST",
   });
 }
 
-export async function createInvitation(email?: string): Promise<InvitationDto> {
+export async function createInvitation(email: string): Promise<InvitationDto> {
   return requestJson<InvitationDto>("/api/v1/invitations", undefined, {
-    body: JSON.stringify(email ? { email } : {}),
+    body: JSON.stringify({ email }),
     method: "POST",
   });
 }
