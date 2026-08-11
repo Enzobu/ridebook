@@ -3,6 +3,10 @@ import { ConfigService } from "@nestjs/config";
 
 import type { TestMailType } from "./dto/send-test-mail.dto.js";
 
+interface WorkerErrorPayload {
+  message?: string;
+}
+
 @Injectable()
 export class AdminMailService {
   constructor(private readonly configService: ConfigService) {}
@@ -18,11 +22,24 @@ export class AdminMailService {
         method: "POST",
       });
     } catch {
-      throw new ServiceUnavailableException("Maps worker is unavailable.");
+      throw new ServiceUnavailableException(
+        "Maps worker indisponible. Vérifie qu'il est démarré et joignable par l'API.",
+      );
     }
 
     if (!response.ok) {
-      throw new ServiceUnavailableException("Test email could not be sent.");
+      let message = "Impossible d'envoyer l'email de test.";
+
+      try {
+        const payload = (await response.json()) as WorkerErrorPayload;
+        if (payload.message) {
+          message = payload.message;
+        }
+      } catch {
+        // Keep the stable fallback when the worker response is not JSON.
+      }
+
+      throw new ServiceUnavailableException(message);
     }
   }
 }
