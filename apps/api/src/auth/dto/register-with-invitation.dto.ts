@@ -1,11 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsEmail, IsString, Matches, MinLength } from "class-validator";
+import { IsString, Matches, MinLength } from "class-validator";
 
 export class RegisterWithInvitationDto {
-  @ApiProperty({ example: "user@example.com" })
-  @IsEmail()
-  email!: string;
-
   @ApiProperty({
     description: "12 caractères minimum avec majuscule, minuscule, chiffre et caractère spécial.",
     example: "RidebookTest1!",
