@@ -24,6 +24,7 @@ import {
 import { type FormEvent, type ReactElement, useEffect, useState } from "react";
 
 import {
+  ApiError,
   createTrip,
   createInvitation,
   deleteTrip,
@@ -48,7 +49,7 @@ type ViewState =
   | { name: "form"; trip?: TripDto }
   | { name: "invitations" }
   | { name: "login" }
-  | { name: "register" };
+  | { name: "register"; token?: string };
 
 const STATUS_LABELS: Record<MapStatus, string> = {
   FAILED: "Carte en échec",
@@ -65,7 +66,7 @@ const THEME_OPTIONS: Array<{ icon: ReactElement; label: string; value: ThemeChoi
 
 export function App(): ReactElement {
   const [theme, setTheme] = usePersistentTheme();
-  const [view, setView] = useState<ViewState>({ name: "list" });
+  const [view, setView] = useState<ViewState>(getInitialView);
   const [user, setUser] = useState<UserDto | null>(null);
   const [toast, setToast] = useState<Toast>(null);
 
@@ -90,7 +91,14 @@ export function App(): ReactElement {
   return (
     <main className="app-shell">
       <header className="topbar">
-        <button className="brand" type="button" onClick={() => setView({ name: "list" })}>
+        <button
+          className="brand"
+          type="button"
+          onClick={() => {
+            clearInvitationUrl();
+            setView({ name: "list" });
+          }}
+        >
           <span className="brand-mark" aria-hidden="true">
             <MapPinned size={22} />
           </span>
@@ -175,8 +183,13 @@ export function App(): ReactElement {
       )}
       {view.name === "register" && (
         <RegisterScreen
-          onBack={() => setView({ name: "login" })}
+          initialToken={view.token}
+          onBack={() => {
+            clearInvitationUrl();
+            setView({ name: "login" });
+          }}
           onSuccess={() => {
+            clearInvitationUrl();
             setView({ name: "login" });
             showToast("Compte créé. Tu peux te connecter.", "success");
           }}
@@ -604,44 +617,82 @@ function LoginScreen({
 }
 
 function RegisterScreen({
+  initialToken = "",
   onBack,
   onSuccess,
   onToast,
 }: {
+  initialToken?: string;
   onBack: () => void;
   onSuccess: () => void;
   onToast: (message: string, tone: "success" | "error") => void;
 }): ReactElement {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [token, setToken] = useState("");
+  const [token, setToken] = useState(initialToken);
+  const [formError, setFormError] = useState("");
 
   const submit = async (event: FormEvent): Promise<void> => {
     event.preventDefault();
+
+    const normalizedEmail = email.trim();
+    const normalizedToken = extractInvitationToken(token.trim());
+
+    if (!isValidEmail(normalizedEmail)) {
+      setFormError("L’adresse email est invalide.");
+      return;
+    }
+
+    if (password.length < 12) {
+      setFormError("Le mot de passe doit contenir au moins 12 caractères.");
+      return;
+    }
+
+    if (normalizedToken.length < 32) {
+      setFormError("Le lien ou token d’invitation est invalide.");
+      return;
+    }
+
+    setFormError("");
+
     try {
-      await registerWithInvitation(email, password, extractInvitationToken(token));
+      await registerWithInvitation(normalizedEmail, password, normalizedToken);
       onSuccess();
-    } catch {
-      onToast("Invitation invalide ou expirée.", "error");
+    } catch (error) {
+      const message = error instanceof ApiError ? error.message : "Impossible de créer le compte.";
+      setFormError(message);
+      onToast(message, "error");
     }
   };
 
   return (
     <section className="content narrow">
       <h1>Créer un compte</h1>
-      <form className="form-panel" onSubmit={(event) => void submit(event)}>
+      <form className="form-panel" noValidate onSubmit={(event) => void submit(event)}>
         <label>
           Email
           <input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} />
         </label>
         <label>
           Mot de passe
-          <input type="password" required value={password} onChange={(event) => setPassword(event.target.value)} />
+          <input
+            aria-describedby="password-hint"
+            type="password"
+            required
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+          />
         </label>
+        <span className="form-hint" id="password-hint">12 caractères minimum.</span>
         <label>
           Lien ou token d'invitation
           <input required value={token} onChange={(event) => setToken(event.target.value)} />
         </label>
+        {formError && (
+          <p className="form-hint" role="alert">
+            {formError}
+          </p>
+        )}
         <div className="action-row">
           <button className="primary-action" type="submit">
             Créer le compte
@@ -850,5 +901,25 @@ function extractInvitationToken(value: string): string {
     return parsed.searchParams.get("token") ?? value;
   } catch {
     return value;
+  }
+}
+
+function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(value);
+}
+
+
+function getInitialView(): ViewState {
+  if (window.location.pathname === "/invitations/accept") {
+    const token = new URLSearchParams(window.location.search).get("token") ?? "";
+    return { name: "register", token };
+  }
+
+  return { name: "list" };
+}
+
+function clearInvitationUrl(): void {
+  if (window.location.pathname === "/invitations/accept") {
+    window.history.replaceState({}, "", "/");
   }
 }
