@@ -20,4 +20,5 @@ RUN pnpm --filter frontend build
 
 FROM nginx:1.27-alpine AS runtime
 
+COPY apps/frontend/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/apps/frontend/dist /usr/share/nginx/html

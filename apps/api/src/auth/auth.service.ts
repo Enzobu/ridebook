@@ -5,7 +5,7 @@ import {
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
-import { User, UserRole } from "@prisma/client";
+import { Prisma, User, UserRole } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 import { PrismaService } from "../prisma/prisma.service.js";
@@ -105,18 +105,23 @@ export class AuthService {
     }
   }
 
-  async createUserFromInvitation(email: string, password: string): Promise<User> {
-    const existingUser = await this.prismaService.user.findUnique({
-      where: { email: email.toLowerCase() },
+  async createUserFromInvitation(
+    email: string,
+    password: string,
+    client: Prisma.TransactionClient,
+  ): Promise<User> {
+    const normalizedEmail = email.toLowerCase();
+    const existingUser = await client.user.findUnique({
+      where: { email: normalizedEmail },
     });
 
     if (existingUser) {
       throw new ConflictException("Un compte existe déjà avec cet email.");
     }
 
-    return this.prismaService.user.create({
+    return client.user.create({
       data: {
-        email: email.toLowerCase(),
+        email: normalizedEmail,
         passwordHash: await bcrypt.hash(password, 12),
         role: UserRole.USER,
       },

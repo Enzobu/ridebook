@@ -35,29 +35,43 @@ export class InvitationsService {
   }
 
   async acceptInvitation(token: string, email: string, password: string): Promise<void> {
-    const invitation = await this.prismaService.invitation.findUnique({
-      where: { tokenHash: hashToken(token) },
-    });
+    await this.prismaService.$transaction(async (transaction) => {
+      const invitation = await transaction.invitation.findUnique({
+        where: { tokenHash: hashToken(token) },
+      });
 
-    if (!invitation) {
-      throw new NotFoundException("Invitation introuvable.");
-    }
+      if (!invitation) {
+        throw new NotFoundException("Invitation introuvable.");
+      }
 
-    if (invitation.usedAt) {
-      throw new ConflictException("Invitation déjà utilisée.");
-    }
+      if (invitation.usedAt) {
+        throw new ConflictException("Invitation déjà utilisée.");
+      }
 
-    if (invitation.expiresAt <= new Date()) {
-      throw new GoneException("Invitation expirée.");
-    }
+      if (invitation.expiresAt <= new Date()) {
+        throw new GoneException("Invitation expirée.");
+      }
 
-    const user = await this.authService.createUserFromInvitation(email, password);
-    await this.prismaService.invitation.update({
-      data: {
-        usedAt: new Date(),
-        usedById: user.id,
-      },
-      where: { id: invitation.id },
+      const user = await this.authService.createUserFromInvitation(
+        email,
+        password,
+        transaction,
+      );
+
+      const consumed = await transaction.invitation.updateMany({
+        data: {
+          usedAt: new Date(),
+          usedById: user.id,
+        },
+        where: {
+          id: invitation.id,
+          usedAt: null,
+        },
+      });
+
+      if (consumed.count !== 1) {
+        throw new ConflictException("Invitation déjà utilisée.");
+      }
     });
   }
 

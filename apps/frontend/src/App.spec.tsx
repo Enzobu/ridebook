@@ -191,6 +191,60 @@ describe("App", () => {
     await screen.findByRole("button", { name: /Nouvelle balade/u });
     expect(screen.queryByRole("button", { name: /Invitations/u })).not.toBeInTheDocument();
   });
+
+  it("should reject a short invitation password before calling the API", async () => {
+    mockFetch({ list: { items: [], limit: 9, page: 1, total: 0 } });
+    const user = userEvent.setup();
+
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: "Connexion" }));
+    await user.click(screen.getByRole("button", { name: "Créer via invitation" }));
+    await user.type(screen.getByLabelText("Email"), "user@example.com");
+    await user.type(screen.getByLabelText("Mot de passe"), "short");
+    await user.type(screen.getByLabelText("Lien ou token d'invitation"), "a".repeat(32));
+    await user.click(screen.getByRole("button", { name: "Créer le compte" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Le mot de passe doit contenir au moins 12 caractères.",
+    );
+  });
+
+  it("should display the API invitation error", async () => {
+    mockFetch({
+      list: { items: [], limit: 9, page: 1, total: 0 },
+      register: {
+        body: { message: "Invitation déjà utilisée.", statusCode: 409 },
+        status: 409,
+      },
+    });
+    const user = userEvent.setup();
+
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: "Connexion" }));
+    await user.click(screen.getByRole("button", { name: "Créer via invitation" }));
+    await user.type(screen.getByLabelText("Email"), "user@example.com");
+    await user.type(screen.getByLabelText("Mot de passe"), "correct horse battery staple");
+    await user.type(screen.getByLabelText("Lien ou token d'invitation"), "a".repeat(32));
+    await user.click(screen.getByRole("button", { name: "Créer le compte" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Invitation déjà utilisée.");
+  });
+
+  it("should accept a 201 registration response with an empty body", async () => {
+    mockFetch({ list: { items: [], limit: 9, page: 1, total: 0 }, register: { status: 201 } });
+    const user = userEvent.setup();
+
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: "Connexion" }));
+    await user.click(screen.getByRole("button", { name: "Créer via invitation" }));
+    await user.type(screen.getByLabelText("Email"), "user@example.com");
+    await user.type(screen.getByLabelText("Mot de passe"), "correct horse battery staple");
+    await user.type(screen.getByLabelText("Lien ou token d'invitation"), "a".repeat(32));
+    await user.click(screen.getByRole("button", { name: "Créer le compte" }));
+
+    expect(await screen.findByRole("heading", { name: "Connexion" })).toBeInTheDocument();
+    expect(await screen.findByText("Compte créé. Tu peux te connecter.")).toBeInTheDocument();
+  });
 });
 
 function mockFetch(responses: {
@@ -199,6 +253,7 @@ function mockFetch(responses: {
   detailSequence?: unknown[];
   invitation?: unknown;
   list: unknown;
+  register?: { body?: unknown; status: number };
   retry?: unknown;
   session?: unknown;
 }): void {
@@ -207,6 +262,10 @@ function mockFetch(responses: {
 
     if (url.includes("/auth/me")) {
       return jsonResponse(responses.session ?? { user: null });
+    }
+
+    if (url.endsWith("/auth/register")) {
+      return jsonResponse(responses.register?.body, responses.register?.status ?? 201);
     }
 
     if (url.endsWith("/trips") && !url.includes("?")) {

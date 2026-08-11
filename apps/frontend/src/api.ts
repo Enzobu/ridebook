@@ -2,6 +2,20 @@ import type { AuthSessionDto, InvitationDto, MapStatus, TripDto, TripListDto } f
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
 
+export class ApiError extends Error {
+  constructor(
+    public readonly status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+interface ApiErrorPayload {
+  message?: string | string[];
+}
+
 export interface ListTripsParams {
   order: "asc" | "desc";
   page: number;
@@ -101,12 +115,49 @@ async function requestJson<T>(path: string, signal?: AbortSignal, init: RequestI
   });
 
   if (!response.ok) {
-    throw new Error("Impossible de charger les balades.");
+    throw await createApiError(response);
   }
 
-  if (response.status === 204) {
+  const body = await response.text();
+  if (!body) {
     return undefined as T;
   }
 
-  return response.json() as Promise<T>;
+  return JSON.parse(body) as T;
+}
+
+async function createApiError(response: Response): Promise<ApiError> {
+  let payload: ApiErrorPayload | null = null;
+
+  try {
+    payload = (await response.json()) as ApiErrorPayload;
+  } catch {
+    // Empty/malformed error body: use a stable fallback below.
+  }
+
+  const rawMessages = Array.isArray(payload?.message)
+    ? payload.message
+    : payload?.message
+      ? [payload.message]
+      : [];
+
+  const message = rawMessages.length
+    ? rawMessages.map(translateValidationMessage).join(" ")
+    : response.status >= 500
+      ? "Une erreur serveur est survenue."
+      : "La requête a échoué.";
+
+  return new ApiError(response.status, message);
+}
+
+function translateValidationMessage(message: string): string {
+  const translations: Record<string, string> = {
+    "email must be an email": "L’adresse email est invalide.",
+    "password must be longer than or equal to 12 characters":
+      "Le mot de passe doit contenir au moins 12 caractères.",
+    "token must be longer than or equal to 32 characters":
+      "Le lien ou token d’invitation est invalide.",
+  };
+
+  return translations[message] ?? message;
 }
