@@ -22,19 +22,19 @@ async function handleRequest(
   config: WorkerConfig,
 ): Promise<void> {
   if (request.method !== "POST" || request.url !== "/internal/mail/test") {
-    response.writeHead(404).end();
+    sendJson(response, 404, "Route introuvable.");
     return;
   }
 
   try {
     const payload = JSON.parse(await readBody(request)) as TestMailPayload;
     if (!payload.recipient || !isEmail(payload.recipient) || payload.type !== "WORKER_FAILURE") {
-      response.writeHead(400).end();
+      sendJson(response, 400, "Paramètres de test invalides.");
       return;
     }
 
     if (!config.smtpUser || !config.smtpPassword) {
-      response.writeHead(503).end();
+      sendJson(response, 503, "SMTP non configuré sur le maps-worker (SMTP_USER / SMTP_PASSWORD)." );
       return;
     }
 
@@ -62,8 +62,13 @@ async function handleRequest(
     response.writeHead(204).end();
   } catch (error) {
     process.stderr.write(JSON.stringify({ event: "worker.mail-test.failed", error: String(error) }) + "\n");
-    response.writeHead(500).end();
+    sendJson(response, 500, "Échec de l'envoi SMTP depuis le maps-worker.");
   }
+}
+
+function sendJson(response: ServerResponse, status: number, message: string): void {
+  response.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
+  response.end(JSON.stringify({ message }));
 }
 
 function readBody(request: IncomingMessage): Promise<string> {
