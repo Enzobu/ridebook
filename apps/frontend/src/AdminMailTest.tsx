@@ -1,15 +1,22 @@
 import { Mail, X } from "lucide-react";
 import { type FormEvent, type ReactElement, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { getSession } from "./api.js";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
 
+interface ApiErrorPayload {
+  message?: string;
+}
+
 export function AdminMailTest(): ReactElement | null {
   const [isAdmin, setIsAdmin] = useState(false);
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   const [open, setOpen] = useState(false);
   const [recipient, setRecipient] = useState("");
   const [state, setState] = useState<"idle" | "sending" | "success" | "error">("idle");
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     getSession()
@@ -22,13 +29,36 @@ export function AdminMailTest(): ReactElement | null {
       .catch(() => setIsAdmin(false));
   }, []);
 
-  if (!isAdmin) {
+  useEffect(() => {
+    if (!isAdmin) {
+      return;
+    }
+
+    const topbar = document.querySelector(".topbar-actions");
+    if (!(topbar instanceof HTMLElement)) {
+      return;
+    }
+
+    const slot = document.createElement("div");
+    slot.className = "mail-test-slot";
+    const logoutButton = topbar.querySelector('button[title="Déconnexion"]');
+    topbar.insertBefore(slot, logoutButton ?? null);
+    setPortalTarget(slot);
+
+    return () => {
+      slot.remove();
+      setPortalTarget(null);
+    };
+  }, [isAdmin]);
+
+  if (!isAdmin || !portalTarget) {
     return null;
   }
 
   const submit = async (event: FormEvent): Promise<void> => {
     event.preventDefault();
     setState("sending");
+    setErrorMessage("");
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/v1/admin/mail/test`, {
@@ -38,15 +68,40 @@ export function AdminMailTest(): ReactElement | null {
         method: "POST",
       });
 
-      setState(response.ok ? "success" : "error");
+      if (response.ok) {
+        setState("success");
+        return;
+      }
+
+      let message = "Impossible d'envoyer l'email de test.";
+      try {
+        const payload = (await response.json()) as ApiErrorPayload;
+        if (payload.message) {
+          message = payload.message;
+        }
+      } catch {
+        // Keep the stable fallback when the API response is not JSON.
+      }
+
+      setErrorMessage(message);
+      setState("error");
     } catch {
+      setErrorMessage("API indisponible pendant l'envoi du test.");
       setState("error");
     }
   };
 
-  return (
+  return createPortal(
     <>
-      <button className="mail-test-trigger" onClick={() => { setOpen(true); setState("idle"); }} type="button">
+      <button
+        className="secondary-action compact mail-test-trigger"
+        onClick={() => {
+          setOpen(true);
+          setState("idle");
+          setErrorMessage("");
+        }}
+        type="button"
+      >
         <Mail size={17} />
         Tester l'envoi de mail
       </button>
@@ -74,7 +129,7 @@ export function AdminMailTest(): ReactElement | null {
                 </select>
               </label>
               {state === "success" && <p className="mail-test-feedback success">Email envoyé avec succès.</p>}
-              {state === "error" && <p className="mail-test-feedback error">Impossible d'envoyer l'email de test.</p>}
+              {state === "error" && <p className="mail-test-feedback error">{errorMessage}</p>}
               <div className="mail-test-actions">
                 <button className="secondary-action" onClick={() => setOpen(false)} type="button">Annuler</button>
                 <button className="primary-action" disabled={state === "sending"} type="submit">
@@ -85,6 +140,7 @@ export function AdminMailTest(): ReactElement | null {
           </div>
         </div>
       )}
-    </>
+    </>,
+    portalTarget,
   );
 }
