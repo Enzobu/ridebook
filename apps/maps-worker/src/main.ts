@@ -5,6 +5,7 @@ import { loadWorkerConfig } from "./config.js";
 import { DisabledFailureNotifier, FailureNotifier, SmtpFailureNotifier } from "./failure-notifier.js";
 import { JobProcessor } from "./job-processor.js";
 import { JobRepository } from "./job-repository.js";
+import { startMailTestServer } from "./mail-test-server.js";
 import { FakeMapEmbedExtractor, MapEmbedExtractor, SeleniumMapEmbedExtractor } from "./map-embed-extractor.js";
 
 async function bootstrap(): Promise<void> {
@@ -15,6 +16,8 @@ async function bootstrap(): Promise<void> {
   const extractor = createExtractor(config);
   const notifier = createFailureNotifier(config);
   const processor = new JobProcessor(extractor, repository);
+
+  startMailTestServer(config, Number(process.env["MAIL_TEST_PORT"] ?? "3002"));
 
   process.stdout.write(
     JSON.stringify({

@@ -38,6 +38,7 @@ services:
       ADMIN_EMAIL: "${ADMIN_EMAIL:-admin@example.com}"
       ADMIN_PASSWORD: "${ADMIN_PASSWORD:-change-admin-password}"
       ADMIN_NOTIFICATION_EMAIL: "${ADMIN_NOTIFICATION_EMAIL:-admin@example.com}"
+      MAPS_WORKER_URL: "${MAPS_WORKER_URL:-http://maps-worker:3002}"
       SMTP_HOST: "${SMTP_HOST:-ssl0.ovh.net}"
       SMTP_PORT: "${SMTP_PORT:-587}"
       SMTP_SECURE: "${SMTP_SECURE:-false}"
@@ -53,10 +54,13 @@ services:
     depends_on:
       database:
         condition: service_healthy
+    expose:
+      - "3002"
     environment:
       NODE_ENV: "${NODE_ENV:-production}"
       DATABASE_URL: "mysql://${MARIADB_USER:-ridebook}:${MARIADB_PASSWORD:-change-me}@database:3306/${MARIADB_DATABASE:-ridebook}"
       ADMIN_NOTIFICATION_EMAIL: "${ADMIN_NOTIFICATION_EMAIL:-admin@example.com}"
+      MAIL_TEST_PORT: "3002"
       WORKER_EXTRACTOR_MODE: "${WORKER_EXTRACTOR_MODE:-selenium}"
       SELENIUM_BINARY_PATH: "${SELENIUM_BINARY_PATH:-/usr/bin/chromium}"
       SELENIUM_HEADLESS: "${SELENIUM_HEADLESS:-true}"

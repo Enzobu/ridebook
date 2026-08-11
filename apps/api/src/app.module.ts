@@ -4,6 +4,7 @@ import { APP_GUARD } from "@nestjs/core";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { LoggerModule } from "nestjs-pino";
 
+import { AdminMailModule } from "./admin-mail/admin-mail.module.js";
 import { AppController } from "./app.controller.js";
 import { AuthModule } from "./auth/auth.module.js";
 import { TripsModule } from "./trips/trips.module.js";
@@ -25,6 +26,7 @@ import { TripsModule } from "./trips/trips.module.js";
     ]),
     AuthModule,
     TripsModule,
+    AdminMailModule,
   ],
   controllers: [AppController],
   providers: [
