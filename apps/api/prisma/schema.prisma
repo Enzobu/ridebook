@@ -52,7 +52,7 @@ model Trip {
   distanceKm      Decimal?  @db.Decimal(8, 1)
   durationMinutes Int?
   mapStatus       MapStatus @default(PENDING)
-  mapLastError    String?   @db.Text
+  mapLastError     String?   @db.Text
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   deletedAt       DateTime?
@@ -106,6 +106,7 @@ model RefreshToken {
 model Invitation {
   id          String    @id @default(cuid())
   tokenHash   String    @unique
+  email       String    @db.VarChar(320)
   createdById String
   usedById    String?
   expiresAt   DateTime
@@ -117,5 +118,6 @@ model Invitation {
 
   @@index([createdById])
   @@index([usedById])
+  @@index([email])
   @@map("invitations")
 }
