@@ -682,8 +682,8 @@ function RegisterScreen({
             value={password}
             onChange={(event) => setPassword(event.target.value)}
           />
-          <span className="form-hint" id="password-hint">12 caractères minimum.</span>
         </label>
+        <span className="form-hint" id="password-hint">12 caractères minimum.</span>
         <label>
           Lien ou token d'invitation
           <input required value={token} onChange={(event) => setToken(event.target.value)} />
