@@ -1,9 +1,10 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 
 import type { WorkerConfig } from "./config.js";
-import { SmtpFailureNotifier } from "./failure-notifier.js";
+import { sendInvitationEmail, SmtpFailureNotifier } from "./failure-notifier.js";
 
 interface TestMailPayload {
+  invitationUrl?: string;
   recipient?: string;
   type?: string;
 }
@@ -33,8 +34,8 @@ async function handleRequest(
 
   try {
     const payload = JSON.parse(await readBody(request)) as TestMailPayload;
-    if (!payload.recipient || !isEmail(payload.recipient) || payload.type !== "WORKER_FAILURE") {
-      sendJson(response, 400, "Paramètres de test invalides.");
+    if (!payload.recipient || !isEmail(payload.recipient)) {
+      sendJson(response, 400, "Destinataire invalide.");
       return;
     }
 
@@ -43,14 +44,34 @@ async function handleRequest(
       return;
     }
 
-    const notifier = new SmtpFailureNotifier({
+    const smtpOptions = {
       from: config.smtpFrom,
       host: config.smtpHost,
       password: config.smtpPassword,
       port: config.smtpPort,
       secure: config.smtpSecure,
-      to: payload.recipient,
       user: config.smtpUser,
+    };
+
+    if (payload.type === "INVITATION") {
+      if (!payload.invitationUrl || !isHttpUrl(payload.invitationUrl)) {
+        sendJson(response, 400, "Lien d'invitation invalide.");
+        return;
+      }
+
+      await sendInvitationEmail(smtpOptions, payload.recipient, payload.invitationUrl);
+      response.writeHead(204).end();
+      return;
+    }
+
+    if (payload.type !== "WORKER_FAILURE") {
+      sendJson(response, 400, "Type de mail invalide.");
+      return;
+    }
+
+    const notifier = new SmtpFailureNotifier({
+      ...smtpOptions,
+      to: payload.recipient,
     });
 
     await notifier.notify({
@@ -94,4 +115,13 @@ function readBody(request: IncomingMessage): Promise<string> {
 
 function isEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(value);
+}
+
+function isHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
 }
