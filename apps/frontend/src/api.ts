@@ -104,7 +104,15 @@ export async function resolveInvitation(token: string, signal?: AbortSignal): Pr
   return requestJson<InvitationRegistrationDto>(`/api/v1/auth/invitation?${query.toString()}`, signal);
 }
 
-export async function registerWithInvitation(password: string, token: string): Promise<void> {
+export async function registerWithInvitation(password: string, token: string): Promise<void>;
+export async function registerWithInvitation(_email: string, password: string, token: string): Promise<void>;
+export async function registerWithInvitation(
+  first: string,
+  second: string,
+  third?: string,
+): Promise<void> {
+  const password = third === undefined ? first : second;
+  const token = third === undefined ? second : third;
   const passwordError = getPasswordPolicyError(password);
   if (passwordError) {
     throw new ApiError(0, passwordError);
@@ -116,9 +124,14 @@ export async function registerWithInvitation(password: string, token: string): P
   });
 }
 
-export async function createInvitation(email: string): Promise<InvitationDto> {
+export async function createInvitation(email?: string): Promise<InvitationDto> {
+  const normalizedEmail = email?.trim() ?? "";
+  if (!normalizedEmail) {
+    throw new ApiError(0, "L’adresse email est obligatoire.");
+  }
+
   return requestJson<InvitationDto>("/api/v1/invitations", undefined, {
-    body: JSON.stringify({ email }),
+    body: JSON.stringify({ email: normalizedEmail }),
     method: "POST",
   });
 }
