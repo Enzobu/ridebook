@@ -21,6 +21,11 @@ async function handleRequest(
   response: ServerResponse,
   config: WorkerConfig,
 ): Promise<void> {
+  if (request.method === "GET" && request.url === "/internal/health") {
+    response.writeHead(204).end();
+    return;
+  }
+
   if (request.method !== "POST" || request.url !== "/internal/mail/test") {
     sendJson(response, 404, "Route introuvable.");
     return;
@@ -34,7 +39,7 @@ async function handleRequest(
     }
 
     if (!config.smtpUser || !config.smtpPassword) {
-      sendJson(response, 503, "SMTP non configuré sur le maps-worker (SMTP_USER / SMTP_PASSWORD)." );
+      sendJson(response, 503, "SMTP non configuré sur le maps-worker (SMTP_USER / SMTP_PASSWORD).");
       return;
     }
 
