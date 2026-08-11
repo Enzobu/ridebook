@@ -4,7 +4,7 @@ import { type FormEvent, type ReactElement, useEffect, useState } from "react";
 import { ApiError, registerWithInvitation, resolveInvitation } from "./api.js";
 
 export function InvitationAccept(): ReactElement {
-  const token = new URLSearchParams(window.location.search).get("token") ?? "";
+  const [token] = useState(() => new URLSearchParams(window.location.search).get("token") ?? "");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [state, setState] = useState<"loading" | "idle" | "sending" | "success" | "error">("loading");
