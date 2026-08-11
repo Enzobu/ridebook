@@ -8,6 +8,7 @@ export function InvitationAccept(): ReactElement {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [state, setState] = useState<"loading" | "idle" | "sending" | "success" | "error">("loading");
+  const [invitationReady, setInvitationReady] = useState(false);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -26,6 +27,7 @@ export function InvitationAccept(): ReactElement {
     resolveInvitation(token, controller.signal)
       .then((invitation) => {
         setEmail(invitation.email);
+        setInvitationReady(true);
         setState("idle");
       })
       .catch((error: unknown) => {
@@ -83,7 +85,7 @@ export function InvitationAccept(): ReactElement {
               <input
                 aria-describedby="password-requirements"
                 autoComplete="new-password"
-                disabled={state === "loading" || state === "error"}
+                disabled={!invitationReady || state === "sending"}
                 required
                 type="password"
                 value={password}
@@ -95,7 +97,7 @@ export function InvitationAccept(): ReactElement {
             </span>
             {state === "loading" && <p className="form-hint">Vérification de l’invitation...</p>}
             {message && <p className="form-hint" role="alert">{message}</p>}
-            <button className="primary-action" disabled={state !== "idle"} type="submit">
+            <button className="primary-action" disabled={!invitationReady || state === "sending"} type="submit">
               {state === "sending" ? "Création..." : "Créer mon compte"}
             </button>
           </form>
