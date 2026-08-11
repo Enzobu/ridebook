@@ -159,15 +159,16 @@ describe("App", () => {
     expect(await screen.findByTitle("Carte de Boucle vallée", undefined, { timeout: 6500 })).toBeInTheDocument();
   }, 8000);
 
-  it("should let admins generate and copy invitation links", async () => {
+  it("should let admins send and copy invitation links", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
     mockFetch({
       invitation: {
         createdAt: "2026-08-01T12:00:00.000Z",
+        email: "user@example.com",
         expiresAt: "2026-08-01T13:00:00.000Z",
         id: "invitation-id",
-        invitationUrl: "http://localhost:3000/register?token=abc",
+        invitationUrl: "http://localhost:3000/invitations/accept?token=abc",
       },
       list: { items: [], limit: 9, page: 1, total: 0 },
       session: adminSession,
@@ -176,10 +177,13 @@ describe("App", () => {
 
     render(<App />);
     await user.click(await screen.findByRole("button", { name: /Invitations/u }));
-    await user.click(screen.getByRole("button", { name: /Générer un lien/u }));
+    await user.type(screen.getByLabelText(/Email/u), "user@example.com");
+    await user.click(screen.getByRole("button", { name: /Générer un lien|Envoyer l'invitation/u }));
     await user.click(await screen.findByRole("button", { name: "Copier" }));
 
-    expect(screen.getByLabelText("Lien d'invitation généré")).toHaveValue("http://localhost:3000/register?token=abc");
+    expect(screen.getByLabelText("Lien d'invitation généré")).toHaveValue(
+      "http://localhost:3000/invitations/accept?token=abc",
+    );
     expect(await screen.findByText("Lien copié.")).toBeInTheDocument();
   });
 
