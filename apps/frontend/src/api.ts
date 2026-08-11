@@ -93,6 +93,11 @@ export async function logout(): Promise<void> {
 }
 
 export async function registerWithInvitation(email: string, password: string, token: string): Promise<void> {
+  const passwordError = getPasswordPolicyError(password);
+  if (passwordError) {
+    throw new ApiError(0, passwordError);
+  }
+
   await requestJson<void>("/api/v1/auth/register", undefined, {
     body: JSON.stringify({ email, password, token }),
     method: "POST",
@@ -160,4 +165,28 @@ function translateValidationMessage(message: string): string {
   };
 
   return translations[message] ?? message;
+}
+
+function getPasswordPolicyError(password: string): string | null {
+  if (password.length < 12) {
+    return "Le mot de passe doit contenir au moins 12 caractères.";
+  }
+
+  if (!/\p{Lu}/u.test(password)) {
+    return "Le mot de passe doit contenir au moins une majuscule.";
+  }
+
+  if (!/\p{Ll}/u.test(password)) {
+    return "Le mot de passe doit contenir au moins une minuscule.";
+  }
+
+  if (!/\p{N}/u.test(password)) {
+    return "Le mot de passe doit contenir au moins un chiffre.";
+  }
+
+  if (!/[^\p{L}\p{N}\s]/u.test(password)) {
+    return "Le mot de passe doit contenir au moins un caractère spécial.";
+  }
+
+  return null;
 }

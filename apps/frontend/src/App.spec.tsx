@@ -209,6 +209,26 @@ describe("App", () => {
     );
   });
 
+  it.each([
+    ["ridebooktest1!", "au moins une majuscule"],
+    ["RIDEBOOKTEST1!", "au moins une minuscule"],
+    ["RidebookTest!!", "au moins un chiffre"],
+    ["RidebookTest12", "au moins un caractère spécial"],
+  ])("should reject an invitation password missing a requirement", async (password, expectedMessage) => {
+    mockFetch({ list: { items: [], limit: 9, page: 1, total: 0 } });
+    const user = userEvent.setup();
+
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: "Connexion" }));
+    await user.click(screen.getByRole("button", { name: "Créer via invitation" }));
+    await user.type(screen.getByLabelText("Email"), "user@example.com");
+    await user.type(screen.getByLabelText("Mot de passe"), password);
+    await user.type(screen.getByLabelText("Lien ou token d'invitation"), "a".repeat(32));
+    await user.click(screen.getByRole("button", { name: "Créer le compte" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(expectedMessage);
+  });
+
   it("should display the API invitation error", async () => {
     mockFetch({
       list: { items: [], limit: 9, page: 1, total: 0 },
@@ -223,7 +243,7 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "Connexion" }));
     await user.click(screen.getByRole("button", { name: "Créer via invitation" }));
     await user.type(screen.getByLabelText("Email"), "user@example.com");
-    await user.type(screen.getByLabelText("Mot de passe"), "correct horse battery staple");
+    await user.type(screen.getByLabelText("Mot de passe"), "Correct horse battery 1!");
     await user.type(screen.getByLabelText("Lien ou token d'invitation"), "a".repeat(32));
     await user.click(screen.getByRole("button", { name: "Créer le compte" }));
 
@@ -238,7 +258,7 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "Connexion" }));
     await user.click(screen.getByRole("button", { name: "Créer via invitation" }));
     await user.type(screen.getByLabelText("Email"), "user@example.com");
-    await user.type(screen.getByLabelText("Mot de passe"), "correct horse battery staple");
+    await user.type(screen.getByLabelText("Mot de passe"), "Correct horse battery 1!");
     await user.type(screen.getByLabelText("Lien ou token d'invitation"), "a".repeat(32));
     await user.click(screen.getByRole("button", { name: "Créer le compte" }));
 
