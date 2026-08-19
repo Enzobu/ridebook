@@ -13,17 +13,17 @@
   display: grid;
   place-items: center;
   padding: 20px;
-  background: rgb(0 0 0 / 45%);
-  backdrop-filter: blur(6px);
+  background: rgb(12 13 12 / 54%);
+  backdrop-filter: blur(8px);
 }
 
 .mail-test-dialog {
   width: min(520px, 100%);
-  padding: 24px;
+  padding: 26px;
   border: 1px solid var(--border);
-  border-radius: 18px;
+  border-radius: 22px;
   background: var(--surface);
-  box-shadow: 0 24px 70px rgb(0 0 0 / 25%);
+  box-shadow: var(--shadow-md);
 }
 
 .mail-test-header,
@@ -35,11 +35,11 @@
 }
 
 .mail-test-header {
-  margin-bottom: 22px;
+  margin-bottom: 24px;
 }
 
 .mail-test-header h2 {
-  margin: 3px 0 0;
+  margin: 2px 0 0;
 }
 
 .mail-test-close {
@@ -49,57 +49,84 @@
   place-items: center;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: transparent;
+  background: var(--surface-muted);
   color: var(--muted);
   cursor: pointer;
+  transition: background .16s ease, border-color .16s ease, color .16s ease;
+}
+
+.mail-test-close:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-strong);
+  color: var(--text);
 }
 
 .mail-test-dialog form {
   display: grid;
-  gap: 16px;
+  gap: 18px;
 }
 
 .mail-test-dialog label {
   display: grid;
   gap: 8px;
-  font-weight: 700;
+  color: var(--text-soft);
+  font-size: 13px;
+  font-weight: 650;
 }
 
 .mail-test-dialog input,
 .mail-test-dialog select {
   width: 100%;
-  min-height: 44px;
-  padding: 0 12px;
+  min-height: 46px;
+  padding: 10px 13px;
   border: 1px solid var(--border);
-  border-radius: 11px;
+  border-radius: 10px;
+  outline: 0;
   background: var(--surface-raised);
   color: var(--text);
   font: inherit;
+  transition: border-color .16s ease, box-shadow .16s ease;
+}
+
+.mail-test-dialog input:focus,
+.mail-test-dialog select:focus {
+  border-color: var(--border-strong);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-soft) 72%, transparent);
 }
 
 .mail-test-feedback {
   margin: 0;
-  padding: 10px 12px;
+  padding: 11px 13px;
+  border: 1px solid var(--border);
   border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .mail-test-feedback.success {
-  background: var(--accent-soft);
-  color: var(--accent-strong);
+  border-color: color-mix(in srgb, var(--success) 28%, var(--border));
+  background: var(--success-soft);
+  color: var(--success);
 }
 
 .mail-test-feedback.error {
-  background: rgb(180 45 45 / 10%);
-  color: #b42d2d;
+  border-color: color-mix(in srgb, var(--danger) 28%, var(--border));
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
 .mail-test-actions {
   justify-content: flex-end;
-  margin-top: 6px;
+  margin-top: 4px;
 }
 
 @media (max-width: 620px) {
   .mail-test-dialog {
     padding: 20px;
+    border-radius: 18px;
+  }
+
+  .mail-test-actions > * {
+    flex: 1 1 auto;
   }
 }
