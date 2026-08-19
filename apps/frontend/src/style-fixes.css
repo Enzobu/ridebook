@@ -93,6 +93,7 @@ body {
 }
 
 .select-field select {
+  position: relative;
   min-height: 42px;
   padding: 0 34px 0 0;
   border: 0;
@@ -103,12 +104,19 @@ body {
 }
 
 .select-field select::picker-icon {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  margin: 0;
   color: var(--muted);
+  line-height: 1;
+  transform: translateY(-50%);
+  transform-origin: center;
   transition: transform .16s ease;
 }
 
 .select-field select:open::picker-icon {
-  transform: rotate(180deg);
+  transform: translateY(-50%) rotate(180deg);
 }
 
 .select-field select::picker(select) {
