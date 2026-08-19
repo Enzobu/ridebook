@@ -1,3 +1,7 @@
+body {
+  background: var(--bg);
+}
+
 .topbar::after {
   display: none;
 }
