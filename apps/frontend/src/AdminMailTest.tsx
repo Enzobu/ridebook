@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { getSession } from "./api.js";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
+type TestMailType = "WORKER_FAILURE" | "INVITATION";
 
 interface ApiErrorPayload {
   message?: string;
@@ -15,6 +16,7 @@ export function AdminMailTest(): ReactElement | null {
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   const [open, setOpen] = useState(false);
   const [recipient, setRecipient] = useState("");
+  const [mailType, setMailType] = useState<TestMailType>("WORKER_FAILURE");
   const [state, setState] = useState<"idle" | "sending" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -62,7 +64,7 @@ export function AdminMailTest(): ReactElement | null {
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/v1/admin/mail/test`, {
-        body: JSON.stringify({ recipient: recipient.trim(), type: "WORKER_FAILURE" }),
+        body: JSON.stringify({ recipient: recipient.trim(), type: mailType }),
         credentials: "include",
         headers: { Accept: "application/json", "Content-Type": "application/json" },
         method: "POST",
@@ -124,8 +126,9 @@ export function AdminMailTest(): ReactElement | null {
               </label>
               <label>
                 Type de mail
-                <select defaultValue="WORKER_FAILURE">
+                <select value={mailType} onChange={(event) => setMailType(event.target.value as TestMailType)}>
                   <option value="WORKER_FAILURE">Défaillance du worker</option>
+                  <option value="INVITATION">Invitation</option>
                 </select>
               </label>
               {state === "success" && <p className="mail-test-feedback success">Email envoyé avec succès.</p>}
