@@ -1,9 +1,73 @@
+:root {
+  --nav-bg: rgb(255 253 249 / 94%);
+  --nav-border: var(--line);
+  --nav-text: var(--text);
+  --nav-muted: var(--muted);
+  --nav-control-bg: var(--panel);
+  --nav-control-hover: var(--bg-soft);
+  --nav-control-border: var(--line);
+}
+
+:root[data-theme='dark'] {
+  --nav-bg: rgb(24 24 23 / 94%);
+  --nav-border: #2e2d2a;
+  --nav-text: #f7f2ea;
+  --nav-muted: #a8a39a;
+  --nav-control-bg: #11110f;
+  --nav-control-hover: #2d2c29;
+  --nav-control-border: #3b3935;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-theme='system'] {
+    --nav-bg: rgb(24 24 23 / 94%);
+    --nav-border: #2e2d2a;
+    --nav-text: #f7f2ea;
+    --nav-muted: #a8a39a;
+    --nav-control-bg: #11110f;
+    --nav-control-hover: #2d2c29;
+    --nav-control-border: #3b3935;
+  }
+}
+
 body {
   background: var(--bg);
 }
 
+.topbar {
+  border-color: var(--nav-border);
+  background: var(--nav-bg);
+  color: var(--nav-text);
+}
+
 .topbar::after {
   display: none;
+}
+
+.theme-switcher {
+  border-color: var(--nav-control-border);
+  background: var(--nav-control-bg);
+}
+
+.icon-button {
+  color: var(--nav-muted);
+}
+
+.icon-button:hover,
+.icon-button.active {
+  background: var(--nav-control-hover);
+  color: var(--nav-text);
+}
+
+.topbar .secondary-action:not(:first-of-type) {
+  border-color: var(--nav-control-border);
+  color: var(--nav-text);
+}
+
+.topbar .secondary-action:not(:first-of-type):hover {
+  border-color: var(--line-strong);
+  background: var(--nav-control-hover);
+  color: var(--nav-text);
 }
 
 .trip-card {
@@ -20,4 +84,59 @@ body {
   transform: scale(1.012);
   border-color: var(--line);
   box-shadow: var(--shadow-soft);
+}
+
+/* Chromium 135+: fully customizable select picker. Native select stays as fallback. */
+.select-field select,
+.select-field select::picker(select) {
+  appearance: base-select;
+}
+
+.select-field select {
+  min-height: 42px;
+  padding: 0 34px 0 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.select-field select::picker-icon {
+  color: var(--muted);
+  transition: transform .16s ease;
+}
+
+.select-field select:open::picker-icon {
+  transform: rotate(180deg);
+}
+
+.select-field select::picker(select) {
+  margin-top: 8px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel-strong);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+.select-field option {
+  min-height: 42px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.select-field option:hover,
+.select-field option:focus,
+.select-field option:checked {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+.select-field option::checkmark {
+  display: none;
 }
