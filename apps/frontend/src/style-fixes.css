@@ -99,6 +99,11 @@ body {
   padding: 6px;
 }
 
+.select-field:focus-within {
+  background: transparent;
+  color: var(--muted);
+}
+
 .select-field > svg {
   position: absolute;
   z-index: 2;
@@ -124,9 +129,13 @@ body {
   cursor: pointer;
 }
 
-.select-field:focus-within select,
-.select-field:hover select {
+.select-field:hover select,
+.select-field select:open {
   background: color-mix(in srgb, var(--accent-soft) 48%, transparent);
+}
+
+.select-field select:focus:not(:open) {
+  background: transparent;
 }
 
 .select-field select::picker-icon {
