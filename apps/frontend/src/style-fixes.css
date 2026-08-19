@@ -1,0 +1,18 @@
+.topbar::after {
+  display: none;
+}
+
+.trip-card {
+  box-shadow: none;
+}
+
+.trip-card::before,
+.trip-card:hover::before {
+  display: none;
+}
+
+.trip-card:hover {
+  transform: none;
+  border-color: var(--line);
+  box-shadow: var(--shadow-soft);
+}

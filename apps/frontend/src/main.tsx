@@ -6,6 +6,7 @@ import { App } from "./App.js";
 import { InvitationAccept } from "./InvitationAccept.js";
 import "./styles.css";
 import "./admin-mail-test.css";
+import "./style-fixes.css";
 
 const root = document.getElementById("root");
 
