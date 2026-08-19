@@ -4,6 +4,7 @@
 
 .trip-card {
   box-shadow: none;
+  transition: transform .18s ease, box-shadow .18s ease;
 }
 
 .trip-card::before,
@@ -12,7 +13,7 @@
 }
 
 .trip-card:hover {
-  transform: none;
+  transform: scale(1.012);
   border-color: var(--line);
   box-shadow: var(--shadow-soft);
 }
