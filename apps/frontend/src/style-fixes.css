@@ -92,21 +92,47 @@ body {
   appearance: base-select;
 }
 
+.select-field {
+  position: relative;
+  min-height: 56px;
+  gap: 0;
+  padding: 6px;
+}
+
+.select-field > svg {
+  position: absolute;
+  z-index: 2;
+  left: 18px;
+  top: 50%;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
 .select-field select {
   position: relative;
-  min-height: 42px;
-  padding: 0 34px 0 0;
+  display: flex;
+  width: 100%;
+  height: 44px;
+  min-height: 44px;
+  align-items: center;
+  padding: 0 42px 0 48px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 9px;
   background: transparent;
   color: var(--text);
+  line-height: 1;
   cursor: pointer;
+}
+
+.select-field:focus-within select,
+.select-field:hover select {
+  background: color-mix(in srgb, var(--accent-soft) 48%, transparent);
 }
 
 .select-field select::picker-icon {
   position: absolute;
   top: 50%;
-  right: 0;
+  right: 14px;
   margin: 0;
   color: var(--muted);
   line-height: 1;
