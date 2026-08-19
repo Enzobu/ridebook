@@ -7,6 +7,7 @@ export function InvitationAccept(): ReactElement {
   const [token] = useState(() => new URLSearchParams(window.location.search).get("token") ?? "");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [state, setState] = useState<"loading" | "idle" | "sending" | "success" | "error">("loading");
   const [invitationReady, setInvitationReady] = useState(false);
   const [message, setMessage] = useState("");
@@ -44,6 +45,12 @@ export function InvitationAccept(): ReactElement {
   const submit = async (event: FormEvent): Promise<void> => {
     event.preventDefault();
     setMessage("");
+
+    if (password !== passwordConfirmation) {
+      setMessage("Les deux mots de passe doivent être identiques.");
+      return;
+    }
+
     setState("sending");
 
     try {
@@ -90,6 +97,17 @@ export function InvitationAccept(): ReactElement {
                 type="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
+              />
+            </label>
+            <label>
+              Confirmer le mot de passe
+              <input
+                autoComplete="new-password"
+                disabled={!invitationReady || state === "sending"}
+                required
+                type="password"
+                value={passwordConfirmation}
+                onChange={(event) => setPasswordConfirmation(event.target.value)}
               />
             </label>
             <span className="form-hint" id="password-requirements">

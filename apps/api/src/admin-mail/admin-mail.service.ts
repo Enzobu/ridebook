@@ -13,11 +13,19 @@ export class AdminMailService {
 
   async sendTestMail(recipient: string, type: TestMailType): Promise<void> {
     const workerUrl = this.configService.get<string>("MAPS_WORKER_URL") ?? "http://maps-worker:3002";
+    const payload: { invitationUrl?: string; recipient: string; type: TestMailType } = { recipient, type };
+
+    if (type === "INVITATION") {
+      const frontendUrl = this.configService.get<string>("FRONTEND_URL", "http://localhost:3000");
+      const invitationUrl = new URL("/invitations/accept", frontendUrl);
+      invitationUrl.searchParams.set("token", "test-invitation-token");
+      payload.invitationUrl = invitationUrl.toString();
+    }
 
     let response: Response;
     try {
       response = await fetch(`${workerUrl}/internal/mail/test`, {
-        body: JSON.stringify({ recipient, type }),
+        body: JSON.stringify(payload),
         headers: { "Content-Type": "application/json" },
         method: "POST",
       });

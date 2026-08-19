@@ -1,6 +1,6 @@
 import { IsEmail, IsIn } from "class-validator";
 
-export const TEST_MAIL_TYPES = ["WORKER_FAILURE"] as const;
+export const TEST_MAIL_TYPES = ["WORKER_FAILURE", "INVITATION"] as const;
 export type TestMailType = (typeof TEST_MAIL_TYPES)[number];
 
 export class SendTestMailDto {
