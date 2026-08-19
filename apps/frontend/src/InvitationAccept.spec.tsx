@@ -47,6 +47,7 @@ describe("InvitationAccept", () => {
     expect(screen.queryByLabelText(/token/i)).not.toBeInTheDocument();
 
     await user.type(screen.getByLabelText("Mot de passe"), "RidebookTest1!");
+    await user.type(screen.getByLabelText("Confirmer le mot de passe"), "RidebookTest1!");
     await user.click(screen.getByRole("button", { name: "Créer mon compte" }));
 
     expect(await screen.findByText("Ton compte a bien été créé.")).toBeInTheDocument();

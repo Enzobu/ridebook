@@ -1,0 +1,185 @@
+:root {
+  --nav-bg: rgb(255 253 249 / 94%);
+  --nav-border: var(--line);
+  --nav-text: var(--text);
+  --nav-muted: var(--muted);
+  --nav-control-bg: var(--panel);
+  --nav-control-hover: var(--bg-soft);
+  --nav-control-border: var(--line);
+}
+
+:root[data-theme='dark'] {
+  --nav-bg: rgb(24 24 23 / 94%);
+  --nav-border: #2e2d2a;
+  --nav-text: #f7f2ea;
+  --nav-muted: #a8a39a;
+  --nav-control-bg: #11110f;
+  --nav-control-hover: #2d2c29;
+  --nav-control-border: #3b3935;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-theme='system'] {
+    --nav-bg: rgb(24 24 23 / 94%);
+    --nav-border: #2e2d2a;
+    --nav-text: #f7f2ea;
+    --nav-muted: #a8a39a;
+    --nav-control-bg: #11110f;
+    --nav-control-hover: #2d2c29;
+    --nav-control-border: #3b3935;
+  }
+}
+
+body {
+  background: var(--bg);
+}
+
+.topbar {
+  border-color: var(--nav-border);
+  background: var(--nav-bg);
+  color: var(--nav-text);
+}
+
+.topbar::after {
+  display: none;
+}
+
+.theme-switcher {
+  border-color: var(--nav-control-border);
+  background: var(--nav-control-bg);
+}
+
+.icon-button {
+  color: var(--nav-muted);
+}
+
+.icon-button:hover,
+.icon-button.active {
+  background: var(--nav-control-hover);
+  color: var(--nav-text);
+}
+
+.topbar .secondary-action:not(:first-of-type) {
+  border-color: var(--nav-control-border);
+  color: var(--nav-text);
+}
+
+.topbar .secondary-action:not(:first-of-type):hover {
+  border-color: var(--line-strong);
+  background: var(--nav-control-hover);
+  color: var(--nav-text);
+}
+
+.trip-card {
+  box-shadow: none;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+
+.trip-card::before,
+.trip-card:hover::before {
+  display: none;
+}
+
+.trip-card:hover {
+  transform: scale(1.012);
+  border-color: var(--line);
+  box-shadow: var(--shadow-soft);
+}
+
+/* Chromium 135+: fully customizable select picker. Native select stays as fallback. */
+.select-field select,
+.select-field select::picker(select) {
+  appearance: base-select;
+}
+
+.select-field {
+  position: relative;
+  min-height: 56px;
+  gap: 0;
+  padding: 6px;
+}
+
+.select-field:focus-within {
+  background: transparent;
+  color: var(--muted);
+}
+
+.select-field > svg {
+  position: absolute;
+  z-index: 2;
+  left: 18px;
+  top: 50%;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.select-field select {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 44px;
+  min-height: 44px;
+  align-items: center;
+  padding: 0 42px 0 48px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.select-field:hover select,
+.select-field select:open {
+  background: color-mix(in srgb, var(--accent-soft) 48%, transparent);
+}
+
+.select-field select:focus:not(:open) {
+  background: transparent;
+}
+
+.select-field select::picker-icon {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1;
+  transform: translateY(-50%);
+  transform-origin: center;
+  transition: transform .16s ease;
+}
+
+.select-field select:open::picker-icon {
+  transform: translateY(-50%) rotate(180deg);
+}
+
+.select-field select::picker(select) {
+  margin-top: 8px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel-strong);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+.select-field option {
+  min-height: 42px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.select-field option:hover,
+.select-field option:focus,
+.select-field option:checked {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+.select-field option::checkmark {
+  display: none;
+}
