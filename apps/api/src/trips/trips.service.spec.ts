@@ -7,6 +7,7 @@ import { TripsService } from "./trips.service.js";
 
 const now = new Date("2026-08-01T12:00:00.000Z");
 const baseTrip = {
+  autoTitle: false,
   createdAt: now,
   deletedAt: null,
   description: "Description",
@@ -19,6 +20,7 @@ const baseTrip = {
   mapStatus: MapStatus.PENDING,
   name: "Boucle test",
   ownerId: "owner-id",
+  routeKeyPoints: null,
   updatedAt: now,
 };
 
