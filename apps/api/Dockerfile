@@ -1,10 +1,7 @@
-FROM node:24-bookworm-slim AS build
+FROM node:24-bookworm AS build
 
 WORKDIR /app
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends openssl \
-  && rm -rf /var/lib/apt/lists/* \
-  && corepack enable
+RUN corepack enable
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
 COPY apps/api/package.json apps/api/package.json
@@ -19,13 +16,10 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm --filter api build
 
-FROM node:24-bookworm-slim AS runtime
+FROM node:24-bookworm AS runtime
 
 ENV NODE_ENV=production
 WORKDIR /app
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends openssl \
-  && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /app/node_modules node_modules
 COPY --from=build /app/apps/api/node_modules apps/api/node_modules
