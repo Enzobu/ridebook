@@ -64,7 +64,13 @@ const ROUTE_SUMMARY_LOCATORS: BrowserLocator[] = [
   { type: "xpath", value: "//*[@data-trip-index]" },
 ];
 
-const ROUTE_KEY_POINT_LOCATORS: BrowserLocator[] = [
+const ROUTE_DETAILS_PANEL_LOCATORS: BrowserLocator[] = [
+  { type: "css", value: "div[role='main']" },
+  { type: "xpath", value: "//*[@role='main']" },
+  { type: "xpath", value: "//*[contains(@aria-label, 'Itinéraire') or contains(@aria-label, 'Directions')]" },
+];
+
+const ROUTE_KEY_POINT_FALLBACK_LOCATORS: BrowserLocator[] = [
   { type: "css", value: "[data-step-index]" },
   { type: "css", value: ".directions-mode-step" },
   { type: "xpath", value: "//*[@role='main']//*[self::h1 or self::h2 or self::h3]" },
@@ -84,6 +90,9 @@ const EMBED_VALUE_LOCATORS: BrowserLocator[] = [
   { type: "css", value: "textarea" },
   { type: "css", value: "iframe[src*='/maps/embed']" },
 ];
+
+const OPTIONAL_CLICK_TIMEOUT_MS = 3_000;
+const MAX_ROUTE_KEY_POINTS = 6;
 
 export class SeleniumMapEmbedExtractor implements MapEmbedExtractor {
   private readonly createSession: () => Promise<BrowserSession>;
@@ -121,7 +130,11 @@ export class SeleniumMapEmbedExtractor implements MapEmbedExtractor {
 
   private async clickOptional(session: BrowserSession, locators: BrowserLocator[]): Promise<void> {
     try {
-      await this.clickRequired(session, locators);
+      const element = await session.waitForElement(
+        locators,
+        Math.min(this.options.timeoutMs, OPTIONAL_CLICK_TIMEOUT_MS),
+      );
+      await element.click();
     } catch {
       return;
     }
@@ -146,7 +159,11 @@ export class SeleniumMapEmbedExtractor implements MapEmbedExtractor {
   }
 
   private async readRouteKeyPoints(session: BrowserSession): Promise<string[]> {
-    const elements = await session.findElements(ROUTE_KEY_POINT_LOCATORS);
+    const panelElements = await session.findElements(ROUTE_DETAILS_PANEL_LOCATORS);
+    const fallbackElements = panelElements.length === 0
+      ? await session.findElements(ROUTE_KEY_POINT_FALLBACK_LOCATORS)
+      : [];
+    const elements = panelElements.length > 0 ? panelElements : fallbackElements;
     const texts = await Promise.all(elements.map(async (element) => element.getText()));
     return parseRouteKeyPoints(texts);
   }
@@ -210,7 +227,7 @@ export function parseRouteMetrics(text: string): Pick<MapExtractionResult, "dist
 }
 
 export function parseRouteKeyPoints(texts: string[]): string[] {
-  const points: string[] = [];
+  const candidates: string[] = [];
 
   for (const text of texts) {
     const lines = text
@@ -220,18 +237,47 @@ export function parseRouteKeyPoints(texts: string[]): string[] {
       .filter(Boolean);
 
     for (const line of lines) {
-      const directionMatch = line.match(/\b(?:direction|vers)\s+(?:de\s+|d['’])?(?<place>[^,.;()]{2,60})/iu);
-      if (directionMatch?.groups?.["place"]) {
-        addRoutePoint(points, cleanRoutePoint(directionMatch.groups["place"]));
+      if (isCoordinateLine(line) || isMetricLine(line)) {
+        continue;
+      }
+
+      const postalMatch = line.match(/(?:^|\b)\d{5}\s+(?<place>[\p{L}\p{M}'’ .-]{2,60})$/u);
+      if (postalMatch?.groups?.["place"]) {
+        addCandidate(candidates, postalMatch.groups["place"]);
+      }
+
+      const destinationMatches = line.matchAll(/(?:\bvers\s+|\bdirection\s+(?:de\s+|d['’])|\sà\s+)(?<place>[\p{Lu}À-ÖØ-Þ][\p{L}\p{M}'’ .-]*(?:\/[\p{Lu}À-ÖØ-Þ][\p{L}\p{M}'’ .-]*)?)(?=$|[),.;])/gu);
+      for (const match of destinationMatches) {
+        const place = match.groups?.["place"];
+        if (place) {
+          addCandidate(candidates, place);
+        }
+      }
+
+      const saintStreetMatches = line.matchAll(/\b(?:av\.?|avenue|rte|route|bd|boulevard|chem\.?|chemin)\s+(?:de\s+|du\s+|des\s+|de\s+l['’])(?<place>Saint-[\p{L}\p{M}'’.-]+)/giu);
+      for (const match of saintStreetMatches) {
+        const place = match.groups?.["place"];
+        if (place) {
+          addCandidate(candidates, place);
+        }
       }
 
       if (isStandalonePlaceName(line)) {
-        addRoutePoint(points, cleanRoutePoint(line));
+        addCandidate(candidates, line);
       }
     }
   }
 
-  return points.slice(0, 10);
+  return selectRouteKeyPoints(compactRoutePoints(candidates), MAX_ROUTE_KEY_POINTS);
+}
+
+function isCoordinateLine(value: string): boolean {
+  return /^-?\d{1,3}\.\d+\s*,\s*-?\d{1,3}\.\d+$/u.test(value);
+}
+
+function isMetricLine(value: string): boolean {
+  return /^\d+(?:[.,]\d+)?\s*(?:m|km|min|h)(?:\s|$)/iu.test(value)
+    || /^\d+\s*h\s*\d*\s*min/iu.test(value);
 }
 
 function isStandalonePlaceName(value: string): boolean {
@@ -249,16 +295,18 @@ function isStandalonePlaceName(value: string): boolean {
     "itineraire",
     "partager",
     "share",
+    "plus d'options",
+    "plus d’options",
   ];
   if (ignored.includes(normalized)) {
     return false;
   }
 
-  if (/\b(?:tournez|tourner|continuez|continuer|prenez|prendre|suivez|suivre|rejoignez|rejoindre|rond-point|sortie)\b/iu.test(value)) {
+  if (/\b(?:tournez|tourner|continuez|continuer|prenez|prendre|suivez|suivre|rejoignez|rejoindre|roulez|rouler|rond-point|sortie|destination|circulation|itinéraire)\b/iu.test(value)) {
     return false;
   }
 
-  if (/^(?:A|D|N|E)\s?\d+[A-Z]?$/iu.test(value)) {
+  if (/^(?:A|D|N|E|M)\s?\d+[A-Z0-9]*$/iu.test(value)) {
     return false;
   }
 
@@ -267,20 +315,68 @@ function isStandalonePlaceName(value: string): boolean {
 
 function cleanRoutePoint(value: string): string {
   return value
+    .replace(/\/(?:A|D|N|E|M)\d+[A-Z0-9]*.*$/iu, "")
     .replace(/\s+(?:via|sur|par)\s+.+$/iu, "")
     .replace(/\s{2,}/gu, " ")
     .trim();
 }
 
-function addRoutePoint(points: string[], point: string): void {
-  if (!point || point.length > 60) {
-    return;
+function isLikelyPlaceName(value: string): boolean {
+  if (value.length < 2 || value.length > 60 || /\d/u.test(value)) {
+    return false;
   }
 
-  const previous = points.at(-1);
-  if (previous?.localeCompare(point, "fr", { sensitivity: "base" }) === 0) {
-    return;
+  if (/^(?:imp\.?|lot\.?|av\.?|avenue|rte|route|bd|boulevard|chem\.?|chemin|rés|res)\b/iu.test(value)) {
+    return false;
   }
 
-  points.push(point);
+  return /^[\p{Lu}À-ÖØ-Þ][\p{L}\p{M}'’ .-]+$/u.test(value);
+}
+
+function addCandidate(points: string[], rawPoint: string): void {
+  const splitPoints = rawPoint.split("/");
+
+  for (const splitPoint of splitPoints) {
+    const point = cleanRoutePoint(splitPoint);
+    if (!isLikelyPlaceName(point)) {
+      continue;
+    }
+    points.push(point);
+  }
+}
+
+function compactRoutePoints(points: string[]): string[] {
+  const compacted: string[] = [];
+
+  for (const point of points) {
+    const previous = compacted.at(-1);
+    if (previous?.localeCompare(point, "fr", { sensitivity: "base" }) === 0) {
+      continue;
+    }
+
+    const alreadySeen = compacted.some(
+      (existing) => existing.localeCompare(point, "fr", { sensitivity: "base" }) === 0,
+    );
+    const closesLoop = compacted.length > 1
+      && compacted[0]?.localeCompare(point, "fr", { sensitivity: "base" }) === 0;
+
+    if (!alreadySeen || closesLoop) {
+      compacted.push(point);
+    }
+  }
+
+  return compacted;
+}
+
+function selectRouteKeyPoints(points: string[], maxPoints: number): string[] {
+  if (points.length <= maxPoints) {
+    return points;
+  }
+
+  const selectedIndexes = new Set<number>();
+  for (let index = 0; index < maxPoints; index += 1) {
+    selectedIndexes.add(Math.round((index * (points.length - 1)) / (maxPoints - 1)));
+  }
+
+  return [...selectedIndexes].sort((left, right) => left - right).map((index) => points[index]!);
 }
