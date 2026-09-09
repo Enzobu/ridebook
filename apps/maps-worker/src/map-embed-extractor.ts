@@ -94,6 +94,12 @@ const EMBED_VALUE_LOCATORS: BrowserLocator[] = [
 const OPTIONAL_CLICK_TIMEOUT_MS = 3_000;
 const MAX_ROUTE_KEY_POINTS = 6;
 
+type RoutePointCandidate = {
+  name: string;
+  order: number;
+  priority: 1 | 2 | 3;
+};
+
 export class SeleniumMapEmbedExtractor implements MapEmbedExtractor {
   private readonly createSession: () => Promise<BrowserSession>;
 
@@ -227,7 +233,8 @@ export function parseRouteMetrics(text: string): Pick<MapExtractionResult, "dist
 }
 
 export function parseRouteKeyPoints(texts: string[]): string[] {
-  const candidates: string[] = [];
+  const candidates: RoutePointCandidate[] = [];
+  let order = 0;
 
   for (const text of texts) {
     const lines = text
@@ -243,32 +250,37 @@ export function parseRouteKeyPoints(texts: string[]): string[] {
 
       const postalMatch = line.match(/(?:^|\b)\d{5}\s+(?<place>[\p{L}\p{M}'’ .-]{2,60})$/u);
       if (postalMatch?.groups?.["place"]) {
-        addCandidate(candidates, postalMatch.groups["place"]);
+        order = addCandidate(candidates, postalMatch.groups["place"], 3, order);
       }
 
-      const destinationMatches = line.matchAll(/(?:\bvers\s+|\bdirection\s+(?:de\s+|d['’])|\sà\s+)(?<place>[\p{Lu}À-ÖØ-Þ][\p{L}\p{M}'’ .-]*(?:\/[\p{Lu}À-ÖØ-Þ][\p{L}\p{M}'’ .-]*)?)(?=$|[),.;])/gu);
-      for (const match of destinationMatches) {
-        const place = match.groups?.["place"];
-        if (place) {
-          addCandidate(candidates, place);
-        }
+      const arrivalMatch = line.match(/\sà\s+(?<place>[\p{Lu}À-ÖØ-Þ][\p{L}\p{M}'’ .-]+)(?=$|[),.;])/u);
+      if (arrivalMatch?.groups?.["place"]) {
+        order = addCandidate(candidates, arrivalMatch.groups["place"], 3, order);
       }
 
       const saintStreetMatches = line.matchAll(/\b(?:av\.?|avenue|rte|route|bd|boulevard|chem\.?|chemin)\s+(?:de\s+|du\s+|des\s+|de\s+l['’])(?<place>Saint-[\p{L}\p{M}'’.-]+)/giu);
       for (const match of saintStreetMatches) {
         const place = match.groups?.["place"];
         if (place) {
-          addCandidate(candidates, place);
+          order = addCandidate(candidates, place, 3, order);
+        }
+      }
+
+      const directionMatches = line.matchAll(/(?:\bvers\s+|\bdirection\s+(?:de\s+|d['’]))(?<place>[\p{Lu}À-ÖØ-Þ][\p{L}\p{M}'’ .-]*(?:\/[\p{Lu}À-ÖØ-Þ][\p{L}\p{M}'’ .-]*)?)(?=$|[),.;])/gu);
+      for (const match of directionMatches) {
+        const place = match.groups?.["place"];
+        if (place) {
+          order = addCandidate(candidates, place, 1, order);
         }
       }
 
       if (isStandalonePlaceName(line)) {
-        addCandidate(candidates, line);
+        order = addCandidate(candidates, line, 2, order);
       }
     }
   }
 
-  return selectRouteKeyPoints(compactRoutePoints(candidates), MAX_ROUTE_KEY_POINTS);
+  return selectRouteKeyPoints(compactRouteCandidates(candidates), MAX_ROUTE_KEY_POINTS);
 }
 
 function isCoordinateLine(value: string): boolean {
@@ -333,50 +345,64 @@ function isLikelyPlaceName(value: string): boolean {
   return /^[\p{Lu}À-ÖØ-Þ][\p{L}\p{M}'’ .-]+$/u.test(value);
 }
 
-function addCandidate(points: string[], rawPoint: string): void {
-  const splitPoints = rawPoint.split("/");
+function addCandidate(
+  candidates: RoutePointCandidate[],
+  rawPoint: string,
+  priority: RoutePointCandidate["priority"],
+  order: number,
+): number {
+  let nextOrder = order;
 
-  for (const splitPoint of splitPoints) {
-    const point = cleanRoutePoint(splitPoint);
-    if (!isLikelyPlaceName(point)) {
+  for (const splitPoint of rawPoint.split("/")) {
+    const name = cleanRoutePoint(splitPoint);
+    if (!isLikelyPlaceName(name)) {
       continue;
     }
-    points.push(point);
+    candidates.push({ name, order: nextOrder, priority });
+    nextOrder += 1;
   }
+
+  return nextOrder;
 }
 
-function compactRoutePoints(points: string[]): string[] {
-  const compacted: string[] = [];
+function compactRouteCandidates(candidates: RoutePointCandidate[]): RoutePointCandidate[] {
+  const compacted: RoutePointCandidate[] = [];
 
-  for (const point of points) {
+  for (const candidate of candidates) {
     const previous = compacted.at(-1);
-    if (previous?.localeCompare(point, "fr", { sensitivity: "base" }) === 0) {
+    if (previous?.name.localeCompare(candidate.name, "fr", { sensitivity: "base" }) === 0) {
+      if (candidate.priority > previous.priority) {
+        previous.priority = candidate.priority;
+      }
       continue;
     }
 
-    const alreadySeen = compacted.some(
-      (existing) => existing.localeCompare(point, "fr", { sensitivity: "base" }) === 0,
+    const existingIndex = compacted.findIndex(
+      (existing) => existing.name.localeCompare(candidate.name, "fr", { sensitivity: "base" }) === 0,
     );
-    const closesLoop = compacted.length > 1
-      && compacted[0]?.localeCompare(point, "fr", { sensitivity: "base" }) === 0;
+    const closesLoop = existingIndex === 0 && compacted.length > 1;
 
-    if (!alreadySeen || closesLoop) {
-      compacted.push(point);
+    if (existingIndex === -1 || closesLoop) {
+      compacted.push({ ...candidate });
+    } else if (candidate.priority > compacted[existingIndex]!.priority) {
+      compacted[existingIndex]!.priority = candidate.priority;
     }
   }
 
   return compacted;
 }
 
-function selectRouteKeyPoints(points: string[], maxPoints: number): string[] {
-  if (points.length <= maxPoints) {
-    return points;
+function selectRouteKeyPoints(candidates: RoutePointCandidate[], maxPoints: number): string[] {
+  if (candidates.length <= maxPoints) {
+    return candidates.map((candidate) => candidate.name);
   }
 
-  const selectedIndexes = new Set<number>();
-  for (let index = 0; index < maxPoints; index += 1) {
-    selectedIndexes.add(Math.round((index * (points.length - 1)) / (maxPoints - 1)));
-  }
+  const selected = candidates
+    .map((candidate, index) => ({ candidate, index }))
+    .sort((left, right) => right.candidate.priority - left.candidate.priority || left.index - right.index)
+    .slice(0, maxPoints)
+    .sort((left, right) => left.candidate.order - right.candidate.order)
+    .map(({ candidate }) => candidate.name);
 
-  return [...selectedIndexes].sort((left, right) => left - right).map((index) => points[index]!);
+  return selected;
 }
