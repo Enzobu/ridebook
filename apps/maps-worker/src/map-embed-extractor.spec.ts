@@ -7,6 +7,7 @@ import { BrowserElement, BrowserLocator, BrowserSession } from "./browser-sessio
 import {
   extractEmbedUrl,
   FakeMapEmbedExtractor,
+  parseRouteKeyPoints,
   parseRouteMetrics,
   SeleniumMapEmbedExtractor,
 } from "./map-embed-extractor.js";
@@ -52,6 +53,45 @@ describe("parseRouteMetrics", () => {
   });
 });
 
+describe("parseRouteKeyPoints", () => {
+  it("should parse structural localities from a full Google Maps details panel", () => {
+    const panelText = [
+      "2 h 3 min (105 km)",
+      "via D986",
+      "43.6554549, 3.8379278",
+      "Prendre Rte de Ganges/D986 et quitter Imp. Cabernet et D127E3",
+      "34 min (37,6 km)",
+      "D986",
+      "34190 Laroque",
+      "Prendre à gauche sur Av. des Combattants/D4 (panneaux vers Ceilhes/Brissac)",
+      "Au rond-point, prendre la 3e sortie sur Rte de Brissac/D4",
+      "Prendre à gauche sur D27 (panneaux vers Aniane/Gignac)",
+      "Rester sur la voie de droite pour continuer sur Av. de Saint-Guilhem/D27",
+      "43.6606328, 3.6563196",
+      "Suivre D111 en direction de Lot. Pascal à Montarnaud",
+      "Continuer sur D27E1. Rouler en direction de M102 à Grabels",
+      "Prendre M102 et M127E3 en direction de Imp. Cabernet à Saint-Clément-de-Rivière",
+      "43.6554541, 3.8380376",
+    ].join("\n");
+
+    expect(parseRouteKeyPoints([panelText])).toEqual([
+      "Laroque",
+      "Saint-Guilhem",
+      "Montarnaud",
+      "Grabels",
+      "Saint-Clément-de-Rivière",
+    ]);
+  });
+
+  it("should keep a named loop closure", () => {
+    expect(
+      parseRouteKeyPoints([
+        "175 Mnt du Morastel\n34980 Saint-Clément-de-Rivière\nContinuer en direction de Bédarieux\n34600 Bédarieux\n175 Mnt du Morastel\n34980 Saint-Clément-de-Rivière",
+      ]),
+    ).toEqual(["Saint-Clément-de-Rivière", "Bédarieux", "Saint-Clément-de-Rivière"]);
+  });
+});
+
 describe("SeleniumMapEmbedExtractor", () => {
   let tmpPath: string | undefined;
 
@@ -62,11 +102,16 @@ describe("SeleniumMapEmbedExtractor", () => {
     }
   });
 
-  it("should extract embed URL, distance and duration from a browser session", async () => {
+  it("should extract embed URL, metrics and route points from a browser session", async () => {
     const session = new FakeBrowserSession(
       [new FakeBrowserElement(""), new FakeBrowserElement(""), new FakeBrowserElement("")],
       [new FakeBrowserElement('<iframe src="https://www.google.com/maps/embed?pb=fake"></iframe>')],
       [new FakeBrowserElement("1 h 37 min\n118,4 km")],
+      [
+        new FakeBrowserElement(
+          "34190 Laroque\nPrendre à gauche sur D27 (panneaux vers Aniane/Gignac)\nContinuer sur Av. de Saint-Guilhem/D27\nSuivre D111 en direction de Lot. Pascal à Montarnaud\nRouler en direction de M102 à Grabels\nPrendre M102 en direction de Imp. Cabernet à Saint-Clément-de-Rivière",
+        ),
+      ],
     );
     const extractor = new SeleniumMapEmbedExtractor({
       binaryPath: "/usr/bin/chromium",
@@ -80,14 +125,22 @@ describe("SeleniumMapEmbedExtractor", () => {
       distanceKm: 118.4,
       durationMinutes: 97,
       mapEmbedUrl: "https://www.google.com/maps/embed?pb=fake",
+      routeKeyPoints: [
+        "Laroque",
+        "Saint-Guilhem",
+        "Montarnaud",
+        "Grabels",
+        "Saint-Clément-de-Rivière",
+      ],
     });
     expect(session.quitCalled).toBe(true);
   });
 
-  it("should continue when route metrics are unavailable", async () => {
+  it("should continue when route metrics and route points are unavailable", async () => {
     const session = new FakeBrowserSession(
       [new FakeBrowserElement(""), new FakeBrowserElement(""), new FakeBrowserElement("")],
       [new FakeBrowserElement('<iframe src="https://www.google.com/maps/embed?pb=fake"></iframe>')],
+      [],
       [],
     );
     const extractor = new SeleniumMapEmbedExtractor({
@@ -102,6 +155,7 @@ describe("SeleniumMapEmbedExtractor", () => {
       distanceKm: null,
       durationMinutes: null,
       mapEmbedUrl: "https://www.google.com/maps/embed?pb=fake",
+      routeKeyPoints: [],
     });
   });
 
@@ -109,6 +163,7 @@ describe("SeleniumMapEmbedExtractor", () => {
     tmpPath = await mkdtemp(join(tmpdir(), "ridebook-selenium-"));
     const session = new FakeBrowserSession(
       [new FakeBrowserElement(""), new FakeBrowserElement(""), new FakeBrowserElement("")],
+      [],
       [],
       [],
     );
@@ -156,6 +211,7 @@ class FakeBrowserSession implements BrowserSession {
     private readonly clickableElements: BrowserElement[],
     private readonly embedElements: BrowserElement[],
     private readonly routeElements: BrowserElement[],
+    private readonly detailsElements: BrowserElement[],
   ) {}
 
   async get(_url: string): Promise<void> {
@@ -176,9 +232,19 @@ class FakeBrowserSession implements BrowserSession {
   }
 
   async findElements(locators: BrowserLocator[]): Promise<BrowserElement[]> {
-    return locators.some((locator) => locator.value.includes("data-trip-index"))
-      ? this.routeElements
-      : this.embedElements;
+    if (locators.some((locator) => locator.value.includes("data-trip-index"))) {
+      return this.routeElements;
+    }
+
+    if (locators.some((locator) => locator.value.includes("role='main'") || locator.value.includes("role=\"main\"") || locator.value.includes("aria-label, 'Itinéraire'"))) {
+      return this.detailsElements;
+    }
+
+    if (locators.some((locator) => locator.value.includes("data-step-index") || locator.value.includes("directions-mode-step"))) {
+      return [];
+    }
+
+    return this.embedElements;
   }
 
   async getCurrentUrl(): Promise<string> {

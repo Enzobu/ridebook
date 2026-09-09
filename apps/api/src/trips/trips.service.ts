@@ -56,14 +56,16 @@ export class TripsService {
     assertGoogleMapsUrl(dto.googleMapsUrl);
 
     const trip = await this.prismaService.$transaction(async (transaction) => {
+      const autoTitle = dto.autoTitle ?? false;
       const createdTrip = await transaction.trip.create({
         data: {
+          autoTitle,
           description: dto.description,
           distanceKm: dto.distanceKm,
           durationMinutes: dto.durationMinutes,
           googleMapsUrl: dto.googleMapsUrl,
           mapStatus: MapStatus.PENDING,
-          name: dto.name,
+          name: autoTitle ? dto.name?.trim() || "Balade en cours d’analyse" : dto.name!,
           ownerId,
         },
       });

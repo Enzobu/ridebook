@@ -11,6 +11,12 @@ export class TripResponseDto {
   @ApiProperty({ example: "Boucle des Cévennes" })
   name!: string;
 
+  @ApiProperty({ example: false })
+  autoTitle!: boolean;
+
+  @ApiPropertyOptional({ example: ["Saint-Clément-de-Rivière", "Laroque", "Saint-Guilhem-le-Désert"] })
+  routeKeyPoints!: string[];
+
   @ApiPropertyOptional({ example: "Balade avec passage par le Vigan et l'Espérou." })
   description!: string | null;
 

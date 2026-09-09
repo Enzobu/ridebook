@@ -5,6 +5,7 @@ export interface MapExtractionResult {
   distanceKm: number | null;
   durationMinutes: number | null;
   mapEmbedUrl: string;
+  routeKeyPoints?: string[];
 }
 
 export interface MapEmbedExtractor {
@@ -63,6 +64,19 @@ const ROUTE_SUMMARY_LOCATORS: BrowserLocator[] = [
   { type: "xpath", value: "//*[@data-trip-index]" },
 ];
 
+const ROUTE_DETAILS_PANEL_LOCATORS: BrowserLocator[] = [
+  { type: "css", value: "div[role='main']" },
+  { type: "xpath", value: "//*[@role='main']" },
+  { type: "xpath", value: "//*[contains(@aria-label, 'Itinéraire') or contains(@aria-label, 'Directions')]" },
+];
+
+const ROUTE_KEY_POINT_FALLBACK_LOCATORS: BrowserLocator[] = [
+  { type: "css", value: "[data-step-index]" },
+  { type: "css", value: ".directions-mode-step" },
+  { type: "xpath", value: "//*[@role='main']//*[self::h1 or self::h2 or self::h3]" },
+  { type: "xpath", value: "//*[@role='main']//*[contains(@class, 'directions')]" },
+];
+
 const EMBED_TAB_LOCATORS: BrowserLocator[] = [
   { type: "xpath", value: "//*[@role='tab' and contains(., 'Intégrer une carte')]" },
   { type: "xpath", value: "//*[@role='tab' and contains(., 'Embed a map')]" },
@@ -76,6 +90,15 @@ const EMBED_VALUE_LOCATORS: BrowserLocator[] = [
   { type: "css", value: "textarea" },
   { type: "css", value: "iframe[src*='/maps/embed']" },
 ];
+
+const OPTIONAL_CLICK_TIMEOUT_MS = 3_000;
+const MAX_ROUTE_KEY_POINTS = 6;
+
+type RoutePointCandidate = {
+  name: string;
+  order: number;
+  priority: 1 | 2 | 3;
+};
 
 export class SeleniumMapEmbedExtractor implements MapEmbedExtractor {
   private readonly createSession: () => Promise<BrowserSession>;
@@ -94,6 +117,7 @@ export class SeleniumMapEmbedExtractor implements MapEmbedExtractor {
       await this.clickOptional(session, CONSENT_BUTTON_LOCATORS);
       const metrics = await this.readRouteMetrics(session);
       await this.clickOptional(session, ROUTE_DETAILS_LOCATORS);
+      const routeKeyPoints = await this.readRouteKeyPoints(session);
       await this.clickRequired(session, SHARE_BUTTON_LOCATORS);
       await this.clickRequired(session, EMBED_TAB_LOCATORS);
 
@@ -101,6 +125,7 @@ export class SeleniumMapEmbedExtractor implements MapEmbedExtractor {
       return {
         ...metrics,
         mapEmbedUrl: assertValidGoogleMapsEmbedUrl(extractEmbedUrl(rawEmbedValue)),
+        routeKeyPoints,
       };
     } catch (error) {
       throw await this.withDiagnostic(session, error);
@@ -111,7 +136,11 @@ export class SeleniumMapEmbedExtractor implements MapEmbedExtractor {
 
   private async clickOptional(session: BrowserSession, locators: BrowserLocator[]): Promise<void> {
     try {
-      await this.clickRequired(session, locators);
+      const element = await session.waitForElement(
+        locators,
+        Math.min(this.options.timeoutMs, OPTIONAL_CLICK_TIMEOUT_MS),
+      );
+      await element.click();
     } catch {
       return;
     }
@@ -133,6 +162,16 @@ export class SeleniumMapEmbedExtractor implements MapEmbedExtractor {
     }
 
     return { distanceKm: null, durationMinutes: null };
+  }
+
+  private async readRouteKeyPoints(session: BrowserSession): Promise<string[]> {
+    const panelElements = await session.findElements(ROUTE_DETAILS_PANEL_LOCATORS);
+    const fallbackElements = panelElements.length === 0
+      ? await session.findElements(ROUTE_KEY_POINT_FALLBACK_LOCATORS)
+      : [];
+    const elements = panelElements.length > 0 ? panelElements : fallbackElements;
+    const texts = await Promise.all(elements.map(async (element) => element.getText()));
+    return parseRouteKeyPoints(texts);
   }
 
   private async readEmbedValue(session: BrowserSession): Promise<string> {
@@ -191,4 +230,180 @@ export function parseRouteMetrics(text: string): Pick<MapExtractionResult, "dist
   const durationMinutes = hoursMatch || minutesMatch ? hours * 60 + minutes : null;
 
   return { distanceKm, durationMinutes };
+}
+
+export function parseRouteKeyPoints(texts: string[]): string[] {
+  const candidates: RoutePointCandidate[] = [];
+  let order = 0;
+
+  for (const text of texts) {
+    const lines = text
+      .replaceAll("\u00a0", " ")
+      .split(/\r?\n/u)
+      .map((line) => line.replace(/^[•·\-–—]\s*/u, "").trim())
+      .filter(Boolean);
+
+    for (const line of lines) {
+      if (isCoordinateLine(line) || isMetricLine(line)) {
+        continue;
+      }
+
+      const postalMatch = line.match(/(?:^|\b)\d{5}\s+(?<place>[\p{L}\p{M}'’ .-]{2,60})$/u);
+      if (postalMatch?.groups?.["place"]) {
+        order = addCandidate(candidates, postalMatch.groups["place"], 3, order);
+      }
+
+      const arrivalMatch = line.match(/\sà\s+(?<place>[\p{Lu}À-ÖØ-Þ][\p{L}\p{M}'’ .-]+)(?=$|[),.;])/u);
+      if (arrivalMatch?.groups?.["place"]) {
+        order = addCandidate(candidates, arrivalMatch.groups["place"], 3, order);
+      }
+
+      const saintStreetMatches = line.matchAll(/\b(?:av\.?|avenue|rte|route|bd|boulevard|chem\.?|chemin)\s+(?:de\s+|du\s+|des\s+|de\s+l['’])(?<place>Saint-[\p{L}\p{M}'’.-]+)/giu);
+      for (const match of saintStreetMatches) {
+        const place = match.groups?.["place"];
+        if (place) {
+          order = addCandidate(candidates, place, 3, order);
+        }
+      }
+
+      const directionMatches = line.matchAll(/(?:\bvers\s+|\bdirection\s+(?:de\s+|d['’]))(?<place>[\p{Lu}À-ÖØ-Þ][\p{L}\p{M}'’ .-]*(?:\/[\p{Lu}À-ÖØ-Þ][\p{L}\p{M}'’ .-]*)?)(?=$|[),.;])/gu);
+      for (const match of directionMatches) {
+        const place = match.groups?.["place"];
+        if (place) {
+          order = addCandidate(candidates, place, 1, order);
+        }
+      }
+
+      if (isStandalonePlaceName(line)) {
+        order = addCandidate(candidates, line, 2, order);
+      }
+    }
+  }
+
+  return selectRouteKeyPoints(compactRouteCandidates(candidates), MAX_ROUTE_KEY_POINTS);
+}
+
+function isCoordinateLine(value: string): boolean {
+  return /^-?\d{1,3}\.\d+\s*,\s*-?\d{1,3}\.\d+$/u.test(value);
+}
+
+function isMetricLine(value: string): boolean {
+  return /^\d+(?:[.,]\d+)?\s*(?:m|km|min|h)(?:\s|$)/iu.test(value)
+    || /^\d+\s*h\s*\d*\s*min/iu.test(value);
+}
+
+function isStandalonePlaceName(value: string): boolean {
+  if (value.length < 2 || value.length > 60 || /\d/u.test(value)) {
+    return false;
+  }
+
+  const normalized = value.toLocaleLowerCase("fr-FR");
+  const ignored = [
+    "arrivée",
+    "départ",
+    "détails",
+    "details",
+    "itinéraire",
+    "itineraire",
+    "partager",
+    "share",
+    "plus d'options",
+    "plus d’options",
+  ];
+  if (ignored.includes(normalized)) {
+    return false;
+  }
+
+  if (/\b(?:tournez|tourner|continuez|continuer|prenez|prendre|suivez|suivre|rejoignez|rejoindre|roulez|rouler|rond-point|sortie|destination|circulation|itinéraire)\b/iu.test(value)) {
+    return false;
+  }
+
+  if (/^(?:A|D|N|E|M)\s?\d+[A-Z0-9]*$/iu.test(value)) {
+    return false;
+  }
+
+  return /^[\p{Lu}À-ÖØ-Þ][\p{L}\p{M}'’ .-]+$/u.test(value);
+}
+
+function cleanRoutePoint(value: string): string {
+  return value
+    .replace(/\/(?:A|D|N|E|M)\d+[A-Z0-9]*.*$/iu, "")
+    .replace(/\s+(?:via|sur|par)\s+.+$/iu, "")
+    .replace(/\s{2,}/gu, " ")
+    .trim();
+}
+
+function isLikelyPlaceName(value: string): boolean {
+  if (value.length < 2 || value.length > 60 || /\d/u.test(value)) {
+    return false;
+  }
+
+  if (/^(?:imp\.?|lot\.?|av\.?|avenue|rte|route|bd|boulevard|chem\.?|chemin|rés|res)\b/iu.test(value)) {
+    return false;
+  }
+
+  return /^[\p{Lu}À-ÖØ-Þ][\p{L}\p{M}'’ .-]+$/u.test(value);
+}
+
+function addCandidate(
+  candidates: RoutePointCandidate[],
+  rawPoint: string,
+  priority: RoutePointCandidate["priority"],
+  order: number,
+): number {
+  let nextOrder = order;
+
+  for (const splitPoint of rawPoint.split("/")) {
+    const name = cleanRoutePoint(splitPoint);
+    if (!isLikelyPlaceName(name)) {
+      continue;
+    }
+    candidates.push({ name, order: nextOrder, priority });
+    nextOrder += 1;
+  }
+
+  return nextOrder;
+}
+
+function compactRouteCandidates(candidates: RoutePointCandidate[]): RoutePointCandidate[] {
+  const compacted: RoutePointCandidate[] = [];
+
+  for (const candidate of candidates) {
+    const previous = compacted.at(-1);
+    if (previous?.name.localeCompare(candidate.name, "fr", { sensitivity: "base" }) === 0) {
+      if (candidate.priority > previous.priority) {
+        previous.priority = candidate.priority;
+      }
+      continue;
+    }
+
+    const existingIndex = compacted.findIndex(
+      (existing) => existing.name.localeCompare(candidate.name, "fr", { sensitivity: "base" }) === 0,
+    );
+    const closesLoop = existingIndex === 0 && compacted.length > 1;
+
+    if (existingIndex === -1 || closesLoop) {
+      compacted.push({ ...candidate });
+    } else if (candidate.priority > compacted[existingIndex]!.priority) {
+      compacted[existingIndex]!.priority = candidate.priority;
+    }
+  }
+
+  return compacted;
+}
+
+function selectRouteKeyPoints(candidates: RoutePointCandidate[], maxPoints: number): string[] {
+  const structuralCandidates = candidates.filter((candidate) => candidate.priority >= 2);
+  const pool = structuralCandidates.length >= 3 ? structuralCandidates : candidates;
+
+  if (pool.length <= maxPoints) {
+    return pool.map((candidate) => candidate.name);
+  }
+
+  return pool
+    .map((candidate, index) => ({ candidate, index }))
+    .sort((left, right) => right.candidate.priority - left.candidate.priority || left.index - right.index)
+    .slice(0, maxPoints)
+    .sort((left, right) => left.candidate.order - right.candidate.order)
+    .map(({ candidate }) => candidate.name);
 }

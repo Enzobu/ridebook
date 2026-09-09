@@ -1,0 +1,42 @@
+.form-panel .auto-title-option {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel-strong);
+  cursor: pointer;
+}
+
+.form-panel .auto-title-option input[type="checkbox"] {
+  width: 18px;
+  min-height: 18px;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.auto-title-option span {
+  display: grid;
+  gap: 3px;
+}
+
+.auto-title-option strong {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.auto-title-option small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.form-panel input:disabled {
+  cursor: not-allowed;
+  opacity: .65;
+}
