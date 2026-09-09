@@ -37,6 +37,8 @@ export interface TripDto {
   id: string;
   ownerId: string;
   name: string;
+  autoTitle: boolean;
+  routeKeyPoints: string[];
   description: string | null;
   googleMapsUrl: string;
   mapEmbedUrl: string | null;
