@@ -10,6 +10,7 @@ import {
   Link2,
   ListFilter,
   Loader2,
+  LogIn,
   LogOut,
   MapPinned,
   Moon,
@@ -123,6 +124,7 @@ export function App(): ReactElement {
             </>
           ) : (
             <button className="secondary-action compact" onClick={() => setView({ name: "login" })} type="button">
+              <LogIn size={16} />
               Connexion
             </button>
           )}
