@@ -3,35 +3,42 @@ import { describe, expect, it } from "vitest";
 
 import { JobProcessor } from "./job-processor.js";
 import { JobRepository } from "./job-repository.js";
-import { FakeMapEmbedExtractor } from "./map-embed-extractor.js";
+import { FakeMapEmbedExtractor, MapExtractionResult } from "./map-embed-extractor.js";
 
 describe("JobProcessor", () => {
-  it("should mark the job as successful when the fake extractor returns a valid URL", async () => {
+  it("should persist the complete selenium extraction on success", async () => {
     const job = buildJob();
     const repository = new FakeJobRepository();
-    const extractor = new FakeMapEmbedExtractor("https://www.google.com/maps/embed?pb=fake");
+    const extractor = new FakeMapEmbedExtractor("https://www.google.com/maps/embed?pb=fake", {
+      distanceKm: 118.4,
+      durationMinutes: 97,
+    });
     const processor = new JobProcessor(extractor, repository.asJobRepository());
 
     await processor.process(job);
 
     expect(repository.success).toEqual({
+      extraction: {
+        distanceKm: 118.4,
+        durationMinutes: 97,
+        mapEmbedUrl: "https://www.google.com/maps/embed?pb=fake",
+      },
       jobId: job.id,
-      mapEmbedUrl: "https://www.google.com/maps/embed?pb=fake",
     });
     expect(repository.failure).toBeUndefined();
   });
 });
 
 class FakeJobRepository {
-  success: { jobId: string; mapEmbedUrl: string } | undefined;
+  success: { extraction: MapExtractionResult; jobId: string } | undefined;
   failure: Error | undefined;
 
   async getTripGoogleMapsUrl(_tripId: string): Promise<string> {
     return "https://maps.app.goo.gl/fake";
   }
 
-  async markSuccess(job: MapEmbedJob, mapEmbedUrl: string): Promise<void> {
-    this.success = { jobId: job.id, mapEmbedUrl };
+  async markSuccess(job: MapEmbedJob, extraction: MapExtractionResult): Promise<void> {
+    this.success = { extraction, jobId: job.id };
   }
 
   async markFailure(_job: MapEmbedJob, error: Error): Promise<void> {
