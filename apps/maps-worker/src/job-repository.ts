@@ -1,6 +1,7 @@
 import { MapEmbedJob, MapEmbedJobStatus, MapStatus, PrismaClient } from "@prisma/client";
 
 import { MapFailureNotification } from "./failure-notifier.js";
+import { MapExtractionResult } from "./map-embed-extractor.js";
 import { getNextAttemptDelayMs, shouldFailPermanently } from "./retry-policy.js";
 
 export class JobRepository {
@@ -47,11 +48,13 @@ export class JobRepository {
     return this.prisma.mapEmbedJob.findUniqueOrThrow({ where: { id: candidate.id } });
   }
 
-  async markSuccess(job: MapEmbedJob, mapEmbedUrl: string, now = new Date()): Promise<void> {
+  async markSuccess(job: MapEmbedJob, extraction: MapExtractionResult, now = new Date()): Promise<void> {
     await this.prisma.$transaction([
       this.prisma.trip.update({
         data: {
-          mapEmbedUrl,
+          distanceKm: extraction.distanceKm ?? undefined,
+          durationMinutes: extraction.durationMinutes ?? undefined,
+          mapEmbedUrl: extraction.mapEmbedUrl,
           mapLastError: null,
           mapStatus: MapStatus.SUCCESS,
         },

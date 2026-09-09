@@ -29,10 +29,10 @@ export class ListTripsQueryDto {
   @IsOptional()
   status?: MapStatus;
 
-  @ApiPropertyOptional({ enum: ["createdAt", "name", "distanceKm"] })
-  @IsIn(["createdAt", "name", "distanceKm"])
+  @ApiPropertyOptional({ enum: ["createdAt", "name", "distanceKm", "durationMinutes"] })
+  @IsIn(["createdAt", "name", "distanceKm", "durationMinutes"])
   @IsOptional()
-  sort: "createdAt" | "name" | "distanceKm" = "createdAt";
+  sort: "createdAt" | "name" | "distanceKm" | "durationMinutes" = "createdAt";
 
   @ApiPropertyOptional({ enum: ["asc", "desc"] })
   @IsIn(["asc", "desc"])

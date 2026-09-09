@@ -1,15 +1,30 @@
 import { BrowserLocator, BrowserSession, createSeleniumBrowserSession, saveScreenshot } from "./browser-session.js";
 import { assertValidGoogleMapsEmbedUrl } from "./embed-url-validator.js";
 
+export interface MapExtractionResult {
+  distanceKm: number | null;
+  durationMinutes: number | null;
+  mapEmbedUrl: string;
+}
+
 export interface MapEmbedExtractor {
-  extract(googleMapsUrl: string): Promise<string>;
+  extract(googleMapsUrl: string): Promise<MapExtractionResult>;
 }
 
 export class FakeMapEmbedExtractor implements MapEmbedExtractor {
-  constructor(private readonly embedUrl: string) {}
+  constructor(
+    private readonly embedUrl: string,
+    private readonly metrics: Pick<MapExtractionResult, "distanceKm" | "durationMinutes"> = {
+      distanceKm: null,
+      durationMinutes: null,
+    },
+  ) {}
 
-  async extract(_googleMapsUrl: string): Promise<string> {
-    return assertValidGoogleMapsEmbedUrl(this.embedUrl);
+  async extract(_googleMapsUrl: string): Promise<MapExtractionResult> {
+    return {
+      ...this.metrics,
+      mapEmbedUrl: assertValidGoogleMapsEmbedUrl(this.embedUrl),
+    };
   }
 }
 
@@ -43,6 +58,11 @@ const ROUTE_DETAILS_LOCATORS: BrowserLocator[] = [
   { type: "xpath", value: "//*[self::button or self::a][contains(., 'Details')]" },
 ];
 
+const ROUTE_SUMMARY_LOCATORS: BrowserLocator[] = [
+  { type: "css", value: "[data-trip-index]" },
+  { type: "xpath", value: "//*[@data-trip-index]" },
+];
+
 const EMBED_TAB_LOCATORS: BrowserLocator[] = [
   { type: "xpath", value: "//*[@role='tab' and contains(., 'Intégrer une carte')]" },
   { type: "xpath", value: "//*[@role='tab' and contains(., 'Embed a map')]" },
@@ -66,18 +86,22 @@ export class SeleniumMapEmbedExtractor implements MapEmbedExtractor {
       (() => createSeleniumBrowserSession({ binaryPath: options.binaryPath, headless: options.headless }));
   }
 
-  async extract(googleMapsUrl: string): Promise<string> {
+  async extract(googleMapsUrl: string): Promise<MapExtractionResult> {
     const session = await this.createSession();
 
     try {
       await session.get(googleMapsUrl);
       await this.clickOptional(session, CONSENT_BUTTON_LOCATORS);
+      const metrics = await this.readRouteMetrics(session);
       await this.clickOptional(session, ROUTE_DETAILS_LOCATORS);
       await this.clickRequired(session, SHARE_BUTTON_LOCATORS);
       await this.clickRequired(session, EMBED_TAB_LOCATORS);
 
       const rawEmbedValue = await this.readEmbedValue(session);
-      return assertValidGoogleMapsEmbedUrl(extractEmbedUrl(rawEmbedValue));
+      return {
+        ...metrics,
+        mapEmbedUrl: assertValidGoogleMapsEmbedUrl(extractEmbedUrl(rawEmbedValue)),
+      };
     } catch (error) {
       throw await this.withDiagnostic(session, error);
     } finally {
@@ -96,6 +120,19 @@ export class SeleniumMapEmbedExtractor implements MapEmbedExtractor {
   private async clickRequired(session: BrowserSession, locators: BrowserLocator[]): Promise<void> {
     const element = await session.waitForElement(locators, this.options.timeoutMs);
     await element.click();
+  }
+
+  private async readRouteMetrics(session: BrowserSession): Promise<Pick<MapExtractionResult, "distanceKm" | "durationMinutes">> {
+    const routeElements = await session.findElements(ROUTE_SUMMARY_LOCATORS);
+
+    for (const element of routeElements) {
+      const metrics = parseRouteMetrics(await element.getText());
+      if (metrics.distanceKm !== null || metrics.durationMinutes !== null) {
+        return metrics;
+      }
+    }
+
+    return { distanceKm: null, durationMinutes: null };
   }
 
   private async readEmbedValue(session: BrowserSession): Promise<string> {
@@ -138,4 +175,20 @@ export function extractEmbedUrl(rawValue: string): string {
   }
 
   return rawValue.trim();
+}
+
+export function parseRouteMetrics(text: string): Pick<MapExtractionResult, "distanceKm" | "durationMinutes"> {
+  const normalizedText = text.replaceAll("\u00a0", " ");
+  const distanceMatch = normalizedText.match(/(?<distance>\d+(?:[.,]\d+)?)\s*km\b/iu);
+  const hoursMatch = normalizedText.match(/(?<hours>\d+)\s*(?:h|hr|hrs|hour|hours)\b/iu);
+  const minutesMatch = normalizedText.match(/(?<minutes>\d+)\s*(?:min|mins|minute|minutes)\b/iu);
+
+  const distanceKm = distanceMatch?.groups?.["distance"]
+    ? Number(distanceMatch.groups["distance"].replace(",", "."))
+    : null;
+  const hours = hoursMatch?.groups?.["hours"] ? Number(hoursMatch.groups["hours"]) : 0;
+  const minutes = minutesMatch?.groups?.["minutes"] ? Number(minutesMatch.groups["minutes"]) : 0;
+  const durationMinutes = hoursMatch || minutesMatch ? hours * 60 + minutes : null;
+
+  return { distanceKm, durationMinutes };
 }

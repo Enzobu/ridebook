@@ -4,15 +4,25 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { BrowserElement, BrowserLocator, BrowserSession } from "./browser-session.js";
-import { extractEmbedUrl, FakeMapEmbedExtractor, SeleniumMapEmbedExtractor } from "./map-embed-extractor.js";
+import {
+  extractEmbedUrl,
+  FakeMapEmbedExtractor,
+  parseRouteMetrics,
+  SeleniumMapEmbedExtractor,
+} from "./map-embed-extractor.js";
 
 describe("FakeMapEmbedExtractor", () => {
-  it("should return a valid configured embed URL", async () => {
-    const extractor = new FakeMapEmbedExtractor("https://www.google.com/maps/embed?pb=fake");
+  it("should return a valid configured extraction", async () => {
+    const extractor = new FakeMapEmbedExtractor("https://www.google.com/maps/embed?pb=fake", {
+      distanceKm: 142.6,
+      durationMinutes: 128,
+    });
 
-    await expect(extractor.extract("https://maps.app.goo.gl/fake")).resolves.toBe(
-      "https://www.google.com/maps/embed?pb=fake",
-    );
+    await expect(extractor.extract("https://maps.app.goo.gl/fake")).resolves.toEqual({
+      distanceKm: 142.6,
+      durationMinutes: 128,
+      mapEmbedUrl: "https://www.google.com/maps/embed?pb=fake",
+    });
   });
 });
 
@@ -26,6 +36,22 @@ describe("extractEmbedUrl", () => {
   });
 });
 
+describe("parseRouteMetrics", () => {
+  it("should parse french distance and duration", () => {
+    expect(parseRouteMetrics("2 h 08 min\n142,6 km")).toEqual({
+      distanceKm: 142.6,
+      durationMinutes: 128,
+    });
+  });
+
+  it("should parse a minutes-only duration", () => {
+    expect(parseRouteMetrics("48 min · 63.4 km")).toEqual({
+      distanceKm: 63.4,
+      durationMinutes: 48,
+    });
+  });
+});
+
 describe("SeleniumMapEmbedExtractor", () => {
   let tmpPath: string | undefined;
 
@@ -36,12 +62,11 @@ describe("SeleniumMapEmbedExtractor", () => {
     }
   });
 
-  it("should extract an embed URL from a browser session", async () => {
+  it("should extract embed URL, distance and duration from a browser session", async () => {
     const session = new FakeBrowserSession(
       [new FakeBrowserElement(""), new FakeBrowserElement(""), new FakeBrowserElement("")],
-      [
-        new FakeBrowserElement('<iframe src="https://www.google.com/maps/embed?pb=fake"></iframe>'),
-      ],
+      [new FakeBrowserElement('<iframe src="https://www.google.com/maps/embed?pb=fake"></iframe>')],
+      [new FakeBrowserElement("1 h 37 min\n118,4 km")],
     );
     const extractor = new SeleniumMapEmbedExtractor({
       binaryPath: "/usr/bin/chromium",
@@ -51,40 +76,19 @@ describe("SeleniumMapEmbedExtractor", () => {
       timeoutMs: 1,
     });
 
-    await expect(extractor.extract("https://maps.app.goo.gl/fake")).resolves.toBe(
-      "https://www.google.com/maps/embed?pb=fake",
-    );
+    await expect(extractor.extract("https://maps.app.goo.gl/fake")).resolves.toEqual({
+      distanceKm: 118.4,
+      durationMinutes: 97,
+      mapEmbedUrl: "https://www.google.com/maps/embed?pb=fake",
+    });
     expect(session.quitCalled).toBe(true);
   });
 
-  it("should open route details before sharing when the details action is available", async () => {
-    const session = new FakeBrowserSession(
-      [new FakeBrowserElement(""), new FakeBrowserElement(""), new FakeBrowserElement(""), new FakeBrowserElement("")],
-      [new FakeBrowserElement('<iframe src="https://www.google.com/maps/embed?pb=route"></iframe>')],
-      "https://example.com",
-      true,
-    );
-    const extractor = new SeleniumMapEmbedExtractor({
-      binaryPath: "/usr/bin/chromium",
-      createSession: async () => session,
-      headless: true,
-      screenshotDir: "/tmp",
-      timeoutMs: 1,
-    });
-
-    await expect(extractor.extract("https://maps.app.goo.gl/route")).resolves.toBe(
-      "https://www.google.com/maps/embed?pb=route",
-    );
-
-    expect(
-      session.waitedLocatorGroups.some((locators) => locators.some((locator) => locator.value.includes("Détails"))),
-    ).toBe(true);
-  });
-
-  it("should reject a directions URL with an output embed parameter", async () => {
+  it("should continue when route metrics are unavailable", async () => {
     const session = new FakeBrowserSession(
       [new FakeBrowserElement(""), new FakeBrowserElement(""), new FakeBrowserElement("")],
-      [new FakeBrowserElement("https://www.google.com/maps/dir/Paris/Lyon?output=embed")],
+      [new FakeBrowserElement('<iframe src="https://www.google.com/maps/embed?pb=fake"></iframe>')],
+      [],
     );
     const extractor = new SeleniumMapEmbedExtractor({
       binaryPath: "/usr/bin/chromium",
@@ -94,15 +98,18 @@ describe("SeleniumMapEmbedExtractor", () => {
       timeoutMs: 1,
     });
 
-    await expect(extractor.extract("https://maps.app.goo.gl/fake")).rejects.toThrow(
-      "Iframe Google Maps embed introuvable.",
-    );
+    await expect(extractor.extract("https://maps.app.goo.gl/fake")).resolves.toEqual({
+      distanceKm: null,
+      durationMinutes: null,
+      mapEmbedUrl: "https://www.google.com/maps/embed?pb=fake",
+    });
   });
 
   it("should store a screenshot diagnostic when the iframe is missing", async () => {
     tmpPath = await mkdtemp(join(tmpdir(), "ridebook-selenium-"));
     const session = new FakeBrowserSession(
       [new FakeBrowserElement(""), new FakeBrowserElement(""), new FakeBrowserElement("")],
+      [],
       [],
     );
     const extractor = new SeleniumMapEmbedExtractor({
@@ -118,7 +125,6 @@ describe("SeleniumMapEmbedExtractor", () => {
     );
 
     const metadataFile = (await readdir(tmpPath)).find((fileName) => fileName.endsWith(".json"));
-
     expect(metadataFile).toBeDefined();
 
     const metadata = await readFile(join(tmpPath, metadataFile ?? ""), "utf8");
@@ -145,13 +151,11 @@ class FakeBrowserElement implements BrowserElement {
 
 class FakeBrowserSession implements BrowserSession {
   quitCalled = false;
-  waitedLocatorGroups: BrowserLocator[][] = [];
 
   constructor(
     private readonly clickableElements: BrowserElement[],
     private readonly embedElements: BrowserElement[],
-    private readonly currentUrl = "https://example.com",
-    private readonly routeDetailsAvailable = false,
+    private readonly routeElements: BrowserElement[],
   ) {}
 
   async get(_url: string): Promise<void> {
@@ -159,14 +163,11 @@ class FakeBrowserSession implements BrowserSession {
   }
 
   async waitForElement(locators: BrowserLocator[], _timeoutMs: number): Promise<BrowserElement> {
-    this.waitedLocatorGroups.push(locators);
-
-    if (isRouteDetailsLocatorGroup(locators) && !this.routeDetailsAvailable) {
+    if (locators.some((locator) => locator.value.includes("Détails") || locator.value.includes("Details"))) {
       throw new Error("Élément Google Maps introuvable.");
     }
 
     const element = this.clickableElements.shift();
-
     if (!element) {
       throw new Error("Élément Google Maps introuvable.");
     }
@@ -174,12 +175,14 @@ class FakeBrowserSession implements BrowserSession {
     return element;
   }
 
-  async findElements(_locators: BrowserLocator[]): Promise<BrowserElement[]> {
-    return this.embedElements;
+  async findElements(locators: BrowserLocator[]): Promise<BrowserElement[]> {
+    return locators.some((locator) => locator.value.includes("data-trip-index"))
+      ? this.routeElements
+      : this.embedElements;
   }
 
   async getCurrentUrl(): Promise<string> {
-    return this.currentUrl;
+    return "https://example.com";
   }
 
   async getTitle(): Promise<string> {
@@ -193,8 +196,4 @@ class FakeBrowserSession implements BrowserSession {
   async quit(): Promise<void> {
     this.quitCalled = true;
   }
-}
-
-function isRouteDetailsLocatorGroup(locators: BrowserLocator[]): boolean {
-  return locators.some((locator) => locator.value.includes("Détails") || locator.value.includes("Details"));
 }
