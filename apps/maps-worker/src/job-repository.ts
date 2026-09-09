@@ -49,6 +49,13 @@ export class JobRepository {
   }
 
   async markSuccess(job: MapEmbedJob, extraction: MapExtractionResult, now = new Date()): Promise<void> {
+    const trip = await this.prisma.trip.findUniqueOrThrow({
+      select: { autoTitle: true },
+      where: { id: job.tripId },
+    });
+    const routeKeyPoints = extraction.routeKeyPoints ?? [];
+    const generatedTitle = trip.autoTitle ? buildAutomaticTitle(routeKeyPoints) : null;
+
     await this.prisma.$transaction([
       this.prisma.trip.update({
         data: {
@@ -57,6 +64,8 @@ export class JobRepository {
           mapEmbedUrl: extraction.mapEmbedUrl,
           mapLastError: null,
           mapStatus: MapStatus.SUCCESS,
+          name: generatedTitle ?? undefined,
+          routeKeyPoints,
         },
         where: { id: job.tripId },
       }),
@@ -148,4 +157,20 @@ export class JobRepository {
 
     return notifications.filter((notification): notification is MapFailureNotification => notification !== null);
   }
+}
+
+export function buildAutomaticTitle(routeKeyPoints: string[]): string | null {
+  if (routeKeyPoints.length < 2) {
+    return null;
+  }
+
+  let points = routeKeyPoints.map((point) => point.trim()).filter(Boolean).slice(0, 8);
+  let title = points.join(" → ");
+
+  while (title.length > 150 && points.length > 3) {
+    points = [points[0]!, ...points.slice(1, -2), points.at(-1)!];
+    title = points.join(" → ");
+  }
+
+  return title.length <= 150 ? title : `${title.slice(0, 147).trimEnd()}…`;
 }

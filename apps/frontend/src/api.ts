@@ -55,11 +55,12 @@ export async function getTrip(id: string, signal?: AbortSignal): Promise<TripDto
 }
 
 export interface TripFormPayload {
+  autoTitle?: boolean;
   description?: string;
   distanceKm?: number;
   durationMinutes?: number;
   googleMapsUrl: string;
-  name: string;
+  name?: string;
 }
 
 export async function createTrip(payload: TripFormPayload): Promise<TripDto> {

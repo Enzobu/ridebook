@@ -7,6 +7,7 @@ import { BrowserElement, BrowserLocator, BrowserSession } from "./browser-sessio
 import {
   extractEmbedUrl,
   FakeMapEmbedExtractor,
+  parseRouteKeyPoints,
   parseRouteMetrics,
   SeleniumMapEmbedExtractor,
 } from "./map-embed-extractor.js";
@@ -52,6 +53,25 @@ describe("parseRouteMetrics", () => {
   });
 });
 
+describe("parseRouteKeyPoints", () => {
+  it("should keep standalone localities and destinations from directions", () => {
+    expect(
+      parseRouteKeyPoints([
+        "Saint-Clément-de-Rivière\nPrendre la D986 en direction de Laroque\n12,4 km",
+        "Laroque\nContinuer vers Saint-Guilhem-le-Désert\nD4",
+        "Saint-Guilhem-le-Désert\nSuivre la route en direction d’Aniane",
+        "Aniane\nSaint-Clément-de-Rivière",
+      ]),
+    ).toEqual([
+      "Saint-Clément-de-Rivière",
+      "Laroque",
+      "Saint-Guilhem-le-Désert",
+      "Aniane",
+      "Saint-Clément-de-Rivière",
+    ]);
+  });
+});
+
 describe("SeleniumMapEmbedExtractor", () => {
   let tmpPath: string | undefined;
 
@@ -80,6 +100,7 @@ describe("SeleniumMapEmbedExtractor", () => {
       distanceKm: 118.4,
       durationMinutes: 97,
       mapEmbedUrl: "https://www.google.com/maps/embed?pb=fake",
+      routeKeyPoints: [],
     });
     expect(session.quitCalled).toBe(true);
   });
@@ -102,6 +123,7 @@ describe("SeleniumMapEmbedExtractor", () => {
       distanceKm: null,
       durationMinutes: null,
       mapEmbedUrl: "https://www.google.com/maps/embed?pb=fake",
+      routeKeyPoints: [],
     });
   });
 
@@ -176,9 +198,15 @@ class FakeBrowserSession implements BrowserSession {
   }
 
   async findElements(locators: BrowserLocator[]): Promise<BrowserElement[]> {
-    return locators.some((locator) => locator.value.includes("data-trip-index"))
-      ? this.routeElements
-      : this.embedElements;
+    if (locators.some((locator) => locator.value.includes("data-trip-index"))) {
+      return this.routeElements;
+    }
+
+    if (locators.some((locator) => locator.value.includes("data-step-index") || locator.value.includes("directions-mode-step"))) {
+      return [];
+    }
+
+    return this.embedElements;
   }
 
   async getCurrentUrl(): Promise<string> {

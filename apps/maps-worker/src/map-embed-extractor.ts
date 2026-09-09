@@ -5,6 +5,7 @@ export interface MapExtractionResult {
   distanceKm: number | null;
   durationMinutes: number | null;
   mapEmbedUrl: string;
+  routeKeyPoints?: string[];
 }
 
 export interface MapEmbedExtractor {
@@ -63,6 +64,13 @@ const ROUTE_SUMMARY_LOCATORS: BrowserLocator[] = [
   { type: "xpath", value: "//*[@data-trip-index]" },
 ];
 
+const ROUTE_KEY_POINT_LOCATORS: BrowserLocator[] = [
+  { type: "css", value: "[data-step-index]" },
+  { type: "css", value: ".directions-mode-step" },
+  { type: "xpath", value: "//*[@role='main']//*[self::h1 or self::h2 or self::h3]" },
+  { type: "xpath", value: "//*[@role='main']//*[contains(@class, 'directions')]" },
+];
+
 const EMBED_TAB_LOCATORS: BrowserLocator[] = [
   { type: "xpath", value: "//*[@role='tab' and contains(., 'Intégrer une carte')]" },
   { type: "xpath", value: "//*[@role='tab' and contains(., 'Embed a map')]" },
@@ -94,6 +102,7 @@ export class SeleniumMapEmbedExtractor implements MapEmbedExtractor {
       await this.clickOptional(session, CONSENT_BUTTON_LOCATORS);
       const metrics = await this.readRouteMetrics(session);
       await this.clickOptional(session, ROUTE_DETAILS_LOCATORS);
+      const routeKeyPoints = await this.readRouteKeyPoints(session);
       await this.clickRequired(session, SHARE_BUTTON_LOCATORS);
       await this.clickRequired(session, EMBED_TAB_LOCATORS);
 
@@ -101,6 +110,7 @@ export class SeleniumMapEmbedExtractor implements MapEmbedExtractor {
       return {
         ...metrics,
         mapEmbedUrl: assertValidGoogleMapsEmbedUrl(extractEmbedUrl(rawEmbedValue)),
+        routeKeyPoints,
       };
     } catch (error) {
       throw await this.withDiagnostic(session, error);
@@ -133,6 +143,12 @@ export class SeleniumMapEmbedExtractor implements MapEmbedExtractor {
     }
 
     return { distanceKm: null, durationMinutes: null };
+  }
+
+  private async readRouteKeyPoints(session: BrowserSession): Promise<string[]> {
+    const elements = await session.findElements(ROUTE_KEY_POINT_LOCATORS);
+    const texts = await Promise.all(elements.map(async (element) => element.getText()));
+    return parseRouteKeyPoints(texts);
   }
 
   private async readEmbedValue(session: BrowserSession): Promise<string> {
@@ -191,4 +207,80 @@ export function parseRouteMetrics(text: string): Pick<MapExtractionResult, "dist
   const durationMinutes = hoursMatch || minutesMatch ? hours * 60 + minutes : null;
 
   return { distanceKm, durationMinutes };
+}
+
+export function parseRouteKeyPoints(texts: string[]): string[] {
+  const points: string[] = [];
+
+  for (const text of texts) {
+    const lines = text
+      .replaceAll("\u00a0", " ")
+      .split(/\r?\n/u)
+      .map((line) => line.replace(/^[•·\-–—]\s*/u, "").trim())
+      .filter(Boolean);
+
+    for (const line of lines) {
+      const directionMatch = line.match(/\b(?:direction|vers)\s+(?:de\s+|d['’])?(?<place>[^,.;()]{2,60})/iu);
+      if (directionMatch?.groups?.["place"]) {
+        addRoutePoint(points, cleanRoutePoint(directionMatch.groups["place"]));
+      }
+
+      if (isStandalonePlaceName(line)) {
+        addRoutePoint(points, cleanRoutePoint(line));
+      }
+    }
+  }
+
+  return points.slice(0, 10);
+}
+
+function isStandalonePlaceName(value: string): boolean {
+  if (value.length < 2 || value.length > 60 || /\d/u.test(value)) {
+    return false;
+  }
+
+  const normalized = value.toLocaleLowerCase("fr-FR");
+  const ignored = [
+    "arrivée",
+    "départ",
+    "détails",
+    "details",
+    "itinéraire",
+    "itineraire",
+    "partager",
+    "share",
+  ];
+  if (ignored.includes(normalized)) {
+    return false;
+  }
+
+  if (/\b(?:tournez|tourner|continuez|continuer|prenez|prendre|suivez|suivre|rejoignez|rejoindre|rond-point|sortie)\b/iu.test(value)) {
+    return false;
+  }
+
+  if (/^(?:A|D|N|E)\s?\d+[A-Z]?$/iu.test(value)) {
+    return false;
+  }
+
+  return /^[\p{Lu}À-ÖØ-Þ][\p{L}\p{M}'’ .-]+$/u.test(value);
+}
+
+function cleanRoutePoint(value: string): string {
+  return value
+    .replace(/\s+(?:via|sur|par)\s+.+$/iu, "")
+    .replace(/\s{2,}/gu, " ")
+    .trim();
+}
+
+function addRoutePoint(points: string[], point: string): void {
+  if (!point || point.length > 60) {
+    return;
+  }
+
+  const previous = points.at(-1);
+  if (previous?.localeCompare(point, "fr", { sensitivity: "base" }) === 0) {
+    return;
+  }
+
+  points.push(point);
 }

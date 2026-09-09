@@ -4,7 +4,8 @@ import { type ReactElement, useEffect, useState } from "react";
 import { getSession, logout } from "./api.js";
 import { AppHeader } from "./components/AppHeader.js";
 import { InvitationsScreen, LoginScreen, RegisterScreen, type ToastHandler } from "./components/AuthScreens.js";
-import { TripDetail, TripForm, TripList } from "./components/TripComponents.js";
+import { TripDetail, TripList } from "./components/TripComponents.js";
+import { TripForm } from "./components/TripForm.js";
 import { usePersistentTheme } from "./hooks/usePersistentTheme.js";
 
 type Toast = { message: string; tone: "success" | "error" } | null;

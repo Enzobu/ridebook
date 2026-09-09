@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
+  IsBoolean,
   IsNumber,
   IsOptional,
   IsString,
@@ -8,14 +9,21 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateIf,
 } from "class-validator";
 
 export class CreateTripDto {
-  @ApiProperty({ example: "Boucle des Cévennes", minLength: 3, maxLength: 150 })
+  @ApiPropertyOptional({ example: "Boucle des Cévennes", minLength: 3, maxLength: 150 })
+  @ValidateIf((dto: CreateTripDto) => !dto.autoTitle || dto.name !== undefined)
   @IsString()
   @MaxLength(150)
   @MinLength(3)
-  name!: string;
+  name?: string;
+
+  @ApiPropertyOptional({ example: false, default: false })
+  @IsBoolean()
+  @IsOptional()
+  autoTitle?: boolean;
 
   @ApiPropertyOptional({ example: "Balade avec passage par le Vigan et l'Espérou." })
   @IsOptional()
