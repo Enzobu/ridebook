@@ -393,16 +393,17 @@ function compactRouteCandidates(candidates: RoutePointCandidate[]): RoutePointCa
 }
 
 function selectRouteKeyPoints(candidates: RoutePointCandidate[], maxPoints: number): string[] {
-  if (candidates.length <= maxPoints) {
-    return candidates.map((candidate) => candidate.name);
+  const structuralCandidates = candidates.filter((candidate) => candidate.priority >= 2);
+  const pool = structuralCandidates.length >= 3 ? structuralCandidates : candidates;
+
+  if (pool.length <= maxPoints) {
+    return pool.map((candidate) => candidate.name);
   }
 
-  const selected = candidates
+  return pool
     .map((candidate, index) => ({ candidate, index }))
     .sort((left, right) => right.candidate.priority - left.candidate.priority || left.index - right.index)
     .slice(0, maxPoints)
     .sort((left, right) => left.candidate.order - right.candidate.order)
     .map(({ candidate }) => candidate.name);
-
-  return selected;
 }
