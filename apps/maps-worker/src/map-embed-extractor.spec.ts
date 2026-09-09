@@ -54,7 +54,7 @@ describe("parseRouteMetrics", () => {
 });
 
 describe("parseRouteKeyPoints", () => {
-  it("should parse localities from a full Google Maps details panel", () => {
+  it("should parse structural localities from a full Google Maps details panel", () => {
     const panelText = [
       "2 h 3 min (105 km)",
       "via D986",
@@ -76,10 +76,9 @@ describe("parseRouteKeyPoints", () => {
 
     expect(parseRouteKeyPoints([panelText])).toEqual([
       "Laroque",
-      "Brissac",
-      "Aniane",
       "Saint-Guilhem",
       "Montarnaud",
+      "Grabels",
       "Saint-Clément-de-Rivière",
     ]);
   });
@@ -126,7 +125,13 @@ describe("SeleniumMapEmbedExtractor", () => {
       distanceKm: 118.4,
       durationMinutes: 97,
       mapEmbedUrl: "https://www.google.com/maps/embed?pb=fake",
-      routeKeyPoints: ["Laroque", "Aniane", "Gignac", "Saint-Guilhem", "Montarnaud", "Saint-Clément-de-Rivière"],
+      routeKeyPoints: [
+        "Laroque",
+        "Saint-Guilhem",
+        "Montarnaud",
+        "Grabels",
+        "Saint-Clément-de-Rivière",
+      ],
     });
     expect(session.quitCalled).toBe(true);
   });
