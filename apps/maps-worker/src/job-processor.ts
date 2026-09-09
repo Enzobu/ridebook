@@ -13,8 +13,8 @@ export class JobProcessor {
   async process(job: MapEmbedJob): Promise<MapFailureNotification | null> {
     try {
       const googleMapsUrl = await this.repository.getTripGoogleMapsUrl(job.tripId);
-      const mapEmbedUrl = await this.extractor.extract(googleMapsUrl);
-      await this.repository.markSuccess(job, mapEmbedUrl);
+      const extraction = await this.extractor.extract(googleMapsUrl);
+      await this.repository.markSuccess(job, extraction);
       return null;
     } catch (error) {
       return this.repository.markFailure(job, error instanceof Error ? error : new Error("Erreur inconnue."));
