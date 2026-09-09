@@ -51,6 +51,8 @@ model Trip {
   mapEmbedUrl     String?   @db.VarChar(2048)
   distanceKm      Decimal?  @db.Decimal(8, 1)
   durationMinutes Int?
+  autoTitle       Boolean   @default(false)
+  routeKeyPoints  Json?
   mapStatus       MapStatus @default(PENDING)
   mapLastError     String?   @db.Text
   createdAt       DateTime  @default(now())
