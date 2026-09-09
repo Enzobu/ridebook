@@ -1,0 +1,3 @@
+ALTER TABLE `trips`
+  ADD COLUMN `autoTitle` BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN `routeKeyPoints` JSON NULL;
